@@ -11,6 +11,7 @@ interface Transaction {
 }
 
 interface Budget {
+  id: number
   category: string
   allocated: number
   spent: number
@@ -18,22 +19,192 @@ interface Budget {
 
 export default function BudgetsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [budgets, setBudgets] = useState<Budget[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [editingBudget, setEditingBudget] = useState<Budget | null>(null)
+  const [newBudget, setNewBudget] = useState({
+    category: 'Food & Dining',
+    allocated: ''
+  })
+
+  // Comprehensive expense categories for budgets (only expenses need budgets)
+  const availableCategories = [
+    'Food & Dining',
+    'Groceries', 
+    'Restaurants',
+    'Coffee & Snacks',
+    'Transportation',
+    'Gas & Fuel',
+    'Public Transit',
+    'Uber & Lyft',
+    'Parking',
+    'Car Maintenance',
+    'Housing',
+    'Rent',
+    'Mortgage',
+    'Property Tax',
+    'Home Insurance',
+    'Utilities',
+    'Electricity',
+    'Water',
+    'Internet',
+    'Phone',
+    'Gas Bill',
+    'Entertainment',
+    'Movies',
+    'Streaming Services',
+    'Games',
+    'Books',
+    'Music',
+    'Shopping',
+    'Clothing',
+    'Electronics',
+    'Home & Garden',
+    'Personal Care',
+    'Gifts',
+    'Healthcare',
+    'Doctor Visits',
+    'Pharmacy',
+    'Dental',
+    'Vision',
+    'Health Insurance',
+    'Fitness',
+    'Gym Membership',
+    'Sports',
+    'Education',
+    'Tuition',
+    'Books & Supplies',
+    'Online Courses',
+    'Professional',
+    'Business Expenses',
+    'Office Supplies',
+    'Software',
+    'Professional Services',
+    'Financial',
+    'Bank Fees',
+    'Credit Card Fees',
+    'Investment Fees',
+    'Insurance',
+    'Travel',
+    'Flights',
+    'Hotels',
+    'Vacation',
+    'Travel Insurance',
+    'Family',
+    'Childcare',
+    'Pet Care',
+    'Miscellaneous',
+    'Cash Withdrawal',
+    'Donations',
+    'Taxes',
+    'Other'
+  ]
 
   useEffect(() => {
-    // Load transactions from localStorage
-    const loadTransactions = () => {
+    // Load data from localStorage
+    const loadData = () => {
       const savedTransactions = localStorage.getItem('finance-ai-transactions')
+      const savedBudgets = localStorage.getItem('finance-ai-budgets')
       
       if (savedTransactions) {
         setTransactions(JSON.parse(savedTransactions))
       }
       
+      if (savedBudgets) {
+        setBudgets(JSON.parse(savedBudgets))
+      }
+      
       setIsLoading(false)
     }
 
-    loadTransactions()
+    loadData()
   }, [])
+
+  // Calculate spending for each budget
+  const calculateBudgetSpending = () => {
+    return budgets.map(budget => {
+      const categoryExpenses = transactions
+        .filter(t => t.amount < 0 && t.category === budget.category)
+        .reduce((sum, t) => sum + Math.abs(t.amount), 0)
+      
+      return {
+        ...budget,
+        spent: categoryExpenses
+      }
+    })
+  }
+
+  const budgetsWithSpending = calculateBudgetSpending()
+
+  const handleAddBudget = (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (newBudget.category && newBudget.allocated) {
+      // Check if budget for this category already exists
+      const existingBudget = budgets.find(b => b.category === newBudget.category)
+      if (existingBudget) {
+        alert('Budget for this category already exists. Edit the existing one instead.')
+        return
+      }
+
+      const budget: Budget = {
+        id: Date.now(),
+        category: newBudget.category,
+        allocated: parseFloat(newBudget.allocated),
+        spent: 0
+      }
+      
+      const updatedBudgets = [...budgets, budget]
+      setBudgets(updatedBudgets)
+      localStorage.setItem('finance-ai-budgets', JSON.stringify(updatedBudgets))
+      
+      setNewBudget({ category: 'Food & Dining', allocated: '' })
+      setShowAddForm(false)
+    }
+  }
+
+  const handleEditBudget = (budget: Budget) => {
+    setEditingBudget(budget)
+    setNewBudget({
+      category: budget.category,
+      allocated: budget.allocated.toString()
+    })
+    setShowAddForm(true)
+  }
+
+  const handleUpdateBudget = (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (editingBudget && newBudget.allocated) {
+      const updatedBudgets = budgets.map(b => 
+        b.id === editingBudget.id 
+          ? { ...b, allocated: parseFloat(newBudget.allocated) }
+          : b
+      )
+      
+      setBudgets(updatedBudgets)
+      localStorage.setItem('finance-ai-budgets', JSON.stringify(updatedBudgets))
+      
+      setEditingBudget(null)
+      setNewBudget({ category: 'Food & Dining', allocated: '' })
+      setShowAddForm(false)
+    }
+  }
+
+  const handleDeleteBudget = (id: number) => {
+    if (confirm('Are you sure you want to delete this budget?')) {
+      const updatedBudgets = budgets.filter(b => b.id !== id)
+      setBudgets(updatedBudgets)
+      localStorage.setItem('finance-ai-budgets', JSON.stringify(updatedBudgets))
+    }
+  }
+
+  const cancelEdit = () => {
+    setEditingBudget(null)
+    setNewBudget({ category: 'Food & Dining', allocated: '' })
+    setShowAddForm(false)
+  }
 
   if (isLoading) {
     return (
@@ -44,76 +215,8 @@ export default function BudgetsPage() {
     )
   }
 
-  if (transactions.length === 0) {
-    return (
-      <div className="fade-in">
-        {/* Page Header */}
-        <div className="page-header">
-          <h1 className="page-title">Budgets</h1>
-          <p className="page-subtitle">Set and track your spending limits</p>
-        </div>
-
-        {/* Empty State */}
-        <div className="content-card">
-          <div className="content-card-body" style={{ textAlign: 'center', padding: 'var(--space-16)' }}>
-            <div style={{
-              width: '80px',
-              height: '80px',
-              background: 'linear-gradient(135deg, var(--color-orange) 0%, #e6890a 100%)',
-              borderRadius: 'var(--radius-large)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto var(--space-8) auto',
-              fontSize: 'var(--font-size-title-2)',
-              color: 'white',
-              boxShadow: 'var(--shadow-medium)'
-            }}>
-              🎯
-            </div>
-            <h2 className="text-title-2" style={{ marginBottom: 'var(--space-4)' }}>
-              Budgets Awaiting Data
-            </h2>
-            <p className="text-body" style={{ 
-              color: 'var(--color-text-secondary)',
-              marginBottom: 'var(--space-8)',
-              maxWidth: '500px',
-              margin: '0 auto var(--space-8) auto'
-            }}>
-              Add some transactions to start creating budgets based on your actual spending patterns 
-              and track your progress against your financial goals.
-            </p>
-            <button
-              className="btn btn-primary btn-large"
-              onClick={() => window.location.href = '/dashboard'}
-            >
-              Add Transactions
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Process real transaction data to create budgets
-  const expenses = transactions.filter(t => t.amount < 0)
-  
-  // Calculate actual spending by category
-  const categorySpending: Record<string, number> = {}
-  expenses.forEach(transaction => {
-    const category = transaction.category || 'Other'
-    categorySpending[category] = (categorySpending[category] || 0) + Math.abs(transaction.amount)
-  })
-
-  // Create budgets based on actual spending with some buffer
-  const budgets: Budget[] = Object.entries(categorySpending).map(([category, spent]) => ({
-    category,
-    allocated: Math.ceil(spent * 1.2), // Set budget 20% higher than actual spending
-    spent
-  })).filter(budget => budget.spent > 0) // Only show categories with actual spending
-
-  const totalBudgeted = budgets.reduce((sum, budget) => sum + budget.allocated, 0)
-  const totalSpent = budgets.reduce((sum, budget) => sum + budget.spent, 0)
+  const totalBudgeted = budgetsWithSpending.reduce((sum, budget) => sum + budget.allocated, 0)
+  const totalSpent = budgetsWithSpending.reduce((sum, budget) => sum + budget.spent, 0)
   const remaining = totalBudgeted - totalSpent
 
   return (
@@ -123,33 +226,203 @@ export default function BudgetsPage() {
         <p style={{ color: '#94a3b8' }}>Set and track your spending limits</p>
       </div>
       
+      {/* Add Budget Button */}
+      <div style={{ marginBottom: '2rem' }}>
+        <button 
+          onClick={() => setShowAddForm(!showAddForm)}
+          style={{
+            backgroundColor: showAddForm ? '#ef4444' : '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '0.5rem',
+            padding: '0.75rem 1.5rem',
+            fontWeight: '500',
+            cursor: 'pointer',
+            transition: 'background-color 0.2s ease'
+          }}
+        >
+          {showAddForm ? '✕ Cancel' : '+ Add Budget'}
+        </button>
+      </div>
+
+      {/* Add/Edit Budget Form */}
+      {showAddForm && (
+        <div className="stat-card" style={{ marginBottom: '2rem' }}>
+          <h3 style={{ marginBottom: '1rem' }}>
+            {editingBudget ? 'Edit Budget' : 'Add New Budget'}
+          </h3>
+          <form onSubmit={editingBudget ? handleUpdateBudget : handleAddBudget} style={{ display: 'grid', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '0.875rem',
+                  fontWeight: '500',
+                  marginBottom: '0.5rem',
+                  color: '#94a3b8'
+                }}>
+                  Category
+                </label>
+                <select
+                  value={newBudget.category}
+                  onChange={(e) => setNewBudget({ ...newBudget, category: e.target.value })}
+                  disabled={!!editingBudget} // Disable category editing
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    backgroundColor: editingBudget ? '#2d3748' : '#374151',
+                    border: '1px solid #4b5563',
+                    borderRadius: '0.5rem',
+                    color: editingBudget ? '#94a3b8' : 'white',
+                    fontSize: '0.875rem',
+                    cursor: editingBudget ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {availableCategories.map(category => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+                {editingBudget && (
+                  <p style={{ 
+                    fontSize: '0.75rem', 
+                    color: '#6b7280', 
+                    marginTop: '0.25rem',
+                    fontStyle: 'italic'
+                  }}>
+                    Category cannot be changed when editing
+                  </p>
+                )}
+                {!editingBudget && (
+                  <p style={{ 
+                    fontSize: '0.75rem', 
+                    color: '#6b7280', 
+                    marginTop: '0.25rem',
+                    fontStyle: 'italic'
+                  }}>
+                    Choose from {availableCategories.length} expense categories
+                  </p>
+                )}
+              </div>
+              
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '0.875rem',
+                  fontWeight: '500',
+                  marginBottom: '0.5rem',
+                  color: '#94a3b8'
+                }}>
+                  Monthly Budget ($)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={newBudget.allocated}
+                  onChange={(e) => setNewBudget({ ...newBudget, allocated: e.target.value })}
+                  placeholder="0.00"
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    backgroundColor: '#374151',
+                    border: '1px solid #4b5563',
+                    borderRadius: '0.5rem',
+                    color: 'white',
+                    fontSize: '0.875rem'
+                  }}
+                />
+                <p style={{ 
+                  fontSize: '0.75rem', 
+                  color: '#6b7280', 
+                  marginTop: '0.25rem',
+                  fontStyle: 'italic'
+                }}>
+                  Set your monthly spending limit for this category
+                </p>
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                type="submit"
+                style={{
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  padding: '0.75rem 1.5rem',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  flex: 1
+                }}
+              >
+                {editingBudget ? 'Update Budget' : 'Add Budget'}
+              </button>
+              {editingBudget && (
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  style={{
+                    backgroundColor: '#6b7280',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    padding: '0.75rem 1.5rem',
+                    fontWeight: '500',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+          </form>
+        </div>
+      )}
+      
       {/* Budget Overview */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-label">Total Budgeted</div>
-          <div className="stat-value">${totalBudgeted.toLocaleString()}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Total Spent</div>
-          <div className="stat-value">${totalSpent.toLocaleString()}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Remaining</div>
-          <div className="stat-value" style={{ color: remaining >= 0 ? '#10b981' : '#ef4444' }}>
-            ${remaining.toLocaleString()}
+      {budgetsWithSpending.length > 0 && (
+        <div className="stats-grid" style={{ marginBottom: '2rem' }}>
+          <div className="stat-card">
+            <div className="stat-label">Total Budgeted</div>
+            <div className="stat-value">${totalBudgeted.toLocaleString()}</div>
+            <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+              Across {budgetsWithSpending.length} categor{budgetsWithSpending.length === 1 ? 'y' : 'ies'}
+            </p>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Total Spent</div>
+            <div className="stat-value">${totalSpent.toLocaleString()}</div>
+            <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+              {totalBudgeted > 0 ? `${Math.round((totalSpent / totalBudgeted) * 100)}% of budget used` : 'No budget set'}
+            </p>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Remaining</div>
+            <div className="stat-value" style={{ color: remaining >= 0 ? '#10b981' : '#ef4444' }}>
+              ${remaining.toLocaleString()}
+            </div>
+            <p style={{ 
+              color: remaining >= 0 ? '#10b981' : '#ef4444', 
+              fontSize: '0.875rem', 
+              marginTop: '0.5rem',
+              fontWeight: '500'
+            }}>
+              {remaining >= 0 ? 'Under budget' : 'Over budget'}
+            </p>
           </div>
         </div>
-      </div>
+      )}
       
       {/* Budget List */}
-      {budgets.length > 0 ? (
+      {budgetsWithSpending.length > 0 ? (
         <div style={{ display: 'grid', gap: '1rem' }}>
-          {budgets.map((budget, index) => {
-            const percentage = (budget.spent / budget.allocated) * 100
+          {budgetsWithSpending.map((budget, index) => {
+            const percentage = budget.allocated > 0 ? (budget.spent / budget.allocated) * 100 : 0
             const isOverBudget = percentage > 100
             
             return (
-              <div key={index} className="stat-card">
+              <div key={budget.id} className="stat-card">
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -160,16 +433,49 @@ export default function BudgetsPage() {
                     <h3 style={{ marginBottom: '0.25rem' }}>{budget.category}</h3>
                     <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>Monthly Budget</p>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <p style={{ fontWeight: '600' }}>
-                      ${budget.spent.toLocaleString()} / ${budget.allocated.toLocaleString()}
-                    </p>
-                    <p style={{
-                      fontSize: '0.875rem',
-                      color: isOverBudget ? '#ef4444' : '#94a3b8'
-                    }}>
-                      {percentage.toFixed(0)}% used
-                    </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <p style={{ fontWeight: '600' }}>
+                        ${budget.spent.toLocaleString()} / ${budget.allocated.toLocaleString()}
+                      </p>
+                      <p style={{
+                        fontSize: '0.875rem',
+                        color: isOverBudget ? '#ef4444' : '#94a3b8'
+                      }}>
+                        {percentage.toFixed(0)}% used
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        onClick={() => handleEditBudget(budget)}
+                        style={{
+                          backgroundColor: 'transparent',
+                          color: '#3b82f6',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: '0.25rem',
+                          fontSize: '0.875rem',
+                          borderRadius: '0.25rem'
+                        }}
+                        title="Edit budget"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={() => handleDeleteBudget(budget.id)}
+                        style={{
+                          backgroundColor: 'transparent',
+                          color: '#ef4444',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: '0.25rem',
+                          fontSize: '0.875rem'
+                        }}
+                        title="Delete budget"
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </div>
                 </div>
                 
@@ -200,16 +506,31 @@ export default function BudgetsPage() {
         </div>
       ) : (
         <div className="stat-card">
-          <div style={{ textAlign: 'center', padding: '2rem' }}>
-            <h3 style={{ marginBottom: '1rem' }}>No Expense Categories Yet</h3>
-            <p style={{ color: '#94a3b8', marginBottom: '1.5rem' }}>
-              Add some expense transactions to automatically create budgets based on your spending patterns.
+          <div style={{ textAlign: 'center', padding: '3rem 2rem' }}>
+            <div style={{
+              width: '80px',
+              height: '80px',
+              background: 'linear-gradient(135deg, var(--color-orange) 0%, #e6890a 100%)',
+              borderRadius: 'var(--radius-large)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto var(--space-8) auto',
+              fontSize: 'var(--font-size-title-2)',
+              color: 'white',
+              boxShadow: 'var(--shadow-medium)'
+            }}>
+              🎯
+            </div>
+            <h3 style={{ marginBottom: '1rem' }}>No Budgets Set</h3>
+            <p style={{ color: '#94a3b8', marginBottom: '2rem' }}>
+              Create your first budget from our {availableCategories.length} expense categories to start tracking your spending limits and financial goals.
             </p>
             <button
               className="btn btn-primary"
-              onClick={() => window.location.href = '/dashboard'}
+              onClick={() => setShowAddForm(true)}
             >
-              Add Transactions
+              Create First Budget
             </button>
           </div>
         </div>

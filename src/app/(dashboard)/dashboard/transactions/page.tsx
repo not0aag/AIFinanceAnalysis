@@ -17,8 +17,126 @@ export default function TransactionsPage() {
   const [newTransaction, setNewTransaction] = useState({
     name: '',
     amount: '',
-    category: 'Food'
+    type: 'expense',
+    category: 'Food & Dining'
   })
+
+  // Comprehensive categories for expenses
+  const expenseCategories = [
+    'Food & Dining',
+    'Groceries', 
+    'Restaurants',
+    'Coffee & Snacks',
+    'Transportation',
+    'Gas & Fuel',
+    'Public Transit',
+    'Uber & Lyft',
+    'Parking',
+    'Car Maintenance',
+    'Housing',
+    'Rent',
+    'Mortgage',
+    'Property Tax',
+    'Home Insurance',
+    'Utilities',
+    'Electricity',
+    'Water',
+    'Internet',
+    'Phone',
+    'Gas Bill',
+    'Entertainment',
+    'Movies',
+    'Streaming Services',
+    'Games',
+    'Books',
+    'Music',
+    'Shopping',
+    'Clothing',
+    'Electronics',
+    'Home & Garden',
+    'Personal Care',
+    'Gifts',
+    'Healthcare',
+    'Doctor Visits',
+    'Pharmacy',
+    'Dental',
+    'Vision',
+    'Health Insurance',
+    'Fitness',
+    'Gym Membership',
+    'Sports',
+    'Education',
+    'Tuition',
+    'Books & Supplies',
+    'Online Courses',
+    'Professional',
+    'Business Expenses',
+    'Office Supplies',
+    'Software',
+    'Professional Services',
+    'Financial',
+    'Bank Fees',
+    'Credit Card Fees',
+    'Investment Fees',
+    'Insurance',
+    'Travel',
+    'Flights',
+    'Hotels',
+    'Vacation',
+    'Travel Insurance',
+    'Family',
+    'Childcare',
+    'Pet Care',
+    'Miscellaneous',
+    'Cash Withdrawal',
+    'Donations',
+    'Taxes',
+    'Other'
+  ]
+
+  // Comprehensive categories for income
+  const incomeCategories = [
+    'Salary',
+    'Hourly Wages',
+    'Overtime',
+    'Bonus',
+    'Commission',
+    'Freelance',
+    'Consulting',
+    'Contract Work',
+    'Business Income',
+    'Self Employment',
+    'Side Hustle',
+    'Investments',
+    'Dividends',
+    'Interest',
+    'Capital Gains',
+    'Rental Income',
+    'Royalties',
+    'Government',
+    'Tax Refund',
+    'Social Security',
+    'Unemployment',
+    'Disability',
+    'Child Support',
+    'Alimony',
+    'Other Income',
+    'Gift Money',
+    'Cash Gift',
+    'Inheritance',
+    'Lottery',
+    'Rebate',
+    'Refund',
+    'Reimbursement',
+    'Cashback',
+    'Reward Points',
+    'Found Money',
+    'Miscellaneous Income'
+  ]
+
+  const getCurrentCategories = () => {
+    return newTransaction.type === 'income' ? incomeCategories : expenseCategories
+  }
 
   useEffect(() => {
     // Load transactions from localStorage
@@ -35,14 +153,33 @@ export default function TransactionsPage() {
     loadTransactions()
   }, [])
 
+  // Update category when type changes
+  useEffect(() => {
+    const categories = getCurrentCategories()
+    if (!categories.includes(newTransaction.category)) {
+      setNewTransaction(prev => ({
+        ...prev,
+        category: categories[0]
+      }))
+    }
+  }, [newTransaction.type])
+
   const handleAddTransaction = (e: React.FormEvent) => {
     e.preventDefault()
     
     if (newTransaction.name && newTransaction.amount) {
+      // Calculate the correct amount based on type
+      let amount = Math.abs(parseFloat(newTransaction.amount))
+      
+      // Make expenses negative, keep income positive
+      if (newTransaction.type === 'expense') {
+        amount = -amount
+      }
+      
       const transaction: Transaction = {
         id: Date.now(),
         name: newTransaction.name,
-        amount: parseFloat(newTransaction.amount),
+        amount: amount,
         category: newTransaction.category,
         date: new Date().toISOString().split('T')[0]
       }
@@ -53,7 +190,7 @@ export default function TransactionsPage() {
       // Save to localStorage
       localStorage.setItem('finance-ai-transactions', JSON.stringify(updatedTransactions))
       
-      setNewTransaction({ name: '', amount: '', category: 'Food' })
+      setNewTransaction({ name: '', amount: '', type: 'expense', category: 'Food & Dining' })
       setShowAddForm(false)
     }
   }
@@ -155,6 +292,57 @@ export default function TransactionsPage() {
               />
             </div>
             
+            {/* Type Selector */}
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '0.875rem',
+                fontWeight: '500',
+                marginBottom: '0.5rem',
+                color: '#94a3b8'
+              }}>
+                Type
+              </label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setNewTransaction({ ...newTransaction, type: 'expense' })}
+                  style={{
+                    flex: 1,
+                    padding: '0.75rem',
+                    border: '2px solid',
+                    borderColor: newTransaction.type === 'expense' ? '#ef4444' : '#4b5563',
+                    borderRadius: '0.5rem',
+                    backgroundColor: newTransaction.type === 'expense' ? 'rgba(239, 68, 68, 0.1)' : '#374151',
+                    color: newTransaction.type === 'expense' ? '#ef4444' : '#94a3b8',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  💸 Expense
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNewTransaction({ ...newTransaction, type: 'income' })}
+                  style={{
+                    flex: 1,
+                    padding: '0.75rem',
+                    border: '2px solid',
+                    borderColor: newTransaction.type === 'income' ? '#10b981' : '#4b5563',
+                    borderRadius: '0.5rem',
+                    backgroundColor: newTransaction.type === 'income' ? 'rgba(16, 185, 129, 0.1)' : '#374151',
+                    color: newTransaction.type === 'income' ? '#10b981' : '#94a3b8',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  💰 Income
+                </button>
+              </div>
+            </div>
+            
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div>
                 <label style={{
@@ -171,7 +359,7 @@ export default function TransactionsPage() {
                   step="0.01"
                   value={newTransaction.amount}
                   onChange={(e) => setNewTransaction({ ...newTransaction, amount: e.target.value })}
-                  placeholder="0.00 (use negative for expenses)"
+                  placeholder="0.00"
                   required
                   style={{
                     width: '100%',
@@ -183,6 +371,14 @@ export default function TransactionsPage() {
                     fontSize: '0.875rem'
                   }}
                 />
+                <p style={{ 
+                  fontSize: '0.75rem', 
+                  color: '#6b7280', 
+                  marginTop: '0.25rem',
+                  fontStyle: 'italic'
+                }}>
+                  Enter positive amount only
+                </p>
               </div>
               
               <div>
@@ -208,14 +404,18 @@ export default function TransactionsPage() {
                     fontSize: '0.875rem'
                   }}
                 >
-                  <option value="Food">Food</option>
-                  <option value="Transportation">Transportation</option>
-                  <option value="Entertainment">Entertainment</option>
-                  <option value="Shopping">Shopping</option>
-                  <option value="Bills">Bills</option>
-                  <option value="Income">Income</option>
-                  <option value="Other">Other</option>
+                  {getCurrentCategories().map(category => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
                 </select>
+                <p style={{ 
+                  fontSize: '0.75rem', 
+                  color: '#6b7280', 
+                  marginTop: '0.25rem',
+                  fontStyle: 'italic'
+                }}>
+                  Categories change based on {newTransaction.type} type
+                </p>
               </div>
             </div>
             
@@ -254,16 +454,17 @@ export default function TransactionsPage() {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <div style={{
-                  width: '2rem',
-                  height: '2rem',
-                  backgroundColor: transaction.amount > 0 ? '#10b981' : '#ef4444',
+                  width: '2.5rem',
+                  height: '2.5rem',
+                  backgroundColor: transaction.amount > 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                  border: transaction.amount > 0 ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
                   borderRadius: '0.5rem',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '0.875rem'
                 }}>
-                  {transaction.amount > 0 ? '↗️' : '↙️'}
+                  {transaction.amount > 0 ? '💰' : '💸'}
                 </div>
                 <div>
                   <p style={{ fontWeight: '500', marginBottom: '0.25rem' }}>{transaction.name}</p>
@@ -288,8 +489,17 @@ export default function TransactionsPage() {
                     border: 'none',
                     cursor: 'pointer',
                     padding: '0.25rem',
-                    fontSize: '0.875rem'
+                    fontSize: '1rem',
+                    borderRadius: '0.25rem',
+                    transition: 'background-color 0.2s ease'
                   }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                  }}
+                  title="Delete transaction"
                 >
                   🗑️
                 </button>
