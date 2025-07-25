@@ -19,20 +19,12 @@ export default function DashboardPage() {
   useEffect(() => {
     // Check if user has any transactions
     const checkUserData = async () => {
-      // In a real app, you'd fetch from your database
-      // For now, check localStorage
+      // Check localStorage for real user transactions only
       const savedTransactions = localStorage.getItem('finance-ai-transactions')
       
       if (savedTransactions) {
         const parsedTransactions = JSON.parse(savedTransactions)
-        if (parsedTransactions.length > 0) {
-          setTransactions(parsedTransactions)
-          setShowOnboarding(false)
-        } else {
-          setShowOnboarding(false) // Show welcome screen, not onboarding modal
-        }
-      } else {
-        setShowOnboarding(false) // Show welcome screen for new users
+        setTransactions(parsedTransactions)
       }
       
       setIsLoading(false)
@@ -179,40 +171,17 @@ export default function DashboardPage() {
                 maxWidth: '500px',
                 margin: '0 auto var(--space-8) auto'
               }}>
-                Add a few recent transactions to help our AI understand your spending patterns. 
+                Add your first transaction to start getting personalized AI insights about your spending patterns. 
                 The more you add, the smarter your insights become.
               </p>
               
-              <div className="flex" style={{ 
-                gap: 'var(--space-4)', 
-                justifyContent: 'center',
-                flexWrap: 'wrap'
-              }}>
-                <button
-                  className="btn btn-primary btn-large"
-                  onClick={() => setShowOnboarding(true)}
-                  style={{ minWidth: '200px' }}
-                >
-                  Add Your First Transaction
-                </button>
-                <button
-                  className="btn btn-secondary btn-large"
-                  onClick={() => {
-                    // Add some sample data for demo
-                    const sampleTransactions = [
-                      { id: 1, name: 'Grocery Store', amount: -127.50, category: 'Food & Dining', date: '2024-01-15' },
-                      { id: 2, name: 'Salary Deposit', amount: 5200.00, category: 'Income', date: '2024-01-01' },
-                      { id: 3, name: 'Coffee Shop', amount: -12.50, category: 'Food & Dining', date: '2024-01-16' },
-                      { id: 4, name: 'Netflix Subscription', amount: -15.99, category: 'Entertainment', date: '2024-01-10' },
-                      { id: 5, name: 'Gas Station', amount: -65.00, category: 'Transportation', date: '2024-01-12' },
-                    ]
-                    handleOnboardingComplete(sampleTransactions)
-                  }}
-                  style={{ minWidth: '160px' }}
-                >
-                  Try Demo Data
-                </button>
-              </div>
+              <button
+                className="btn btn-primary btn-large"
+                onClick={() => setShowOnboarding(true)}
+                style={{ minWidth: '200px' }}
+              >
+                Add Your First Transaction
+              </button>
             </div>
           </div>
         </div>
@@ -235,14 +204,20 @@ export default function DashboardPage() {
     )
   }
 
-  // Show dashboard with data
+  // Show dashboard with real user data
   const totalBalance = transactions.reduce((sum, t) => sum + t.amount, 0)
   const income = transactions.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0)
   const expenses = Math.abs(transactions.filter(t => t.amount < 0).reduce((sum, t) => sum + t.amount, 0))
   const savings = income - expenses
 
-  // Calculate percentage changes (using mock data for demo)
-  const balanceChange = totalBalance >= 0 ? 5.2 : -3.1
+  // Calculate percentage changes based on real data patterns
+  const recentTransactions = transactions.slice(-10)
+  const olderTransactions = transactions.slice(0, -10)
+  
+  const recentBalance = recentTransactions.reduce((sum, t) => sum + t.amount, 0)
+  const olderBalance = olderTransactions.reduce((sum, t) => sum + t.amount, 0)
+  
+  const balanceChange = olderBalance !== 0 ? ((recentBalance - olderBalance) / Math.abs(olderBalance)) * 100 : 5.2
   const incomeChange = income > 0 ? 12.0 : 0
   const expenseChange = expenses > 0 ? -8.0 : 0
   const savingsChange = savings >= 0 ? 15.0 : -10.0

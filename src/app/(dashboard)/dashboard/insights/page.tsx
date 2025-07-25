@@ -14,19 +14,6 @@ export default function InsightsPage() {
       
       if (savedTransactions) {
         setTransactions(JSON.parse(savedTransactions))
-      } else {
-        // Sample data for demonstration if no saved transactions
-        const sampleTransactions = [
-          { id: 1, name: 'Grocery Store', amount: -127.50, category: 'Food & Dining', date: '2024-01-15' },
-          { id: 2, name: 'Salary Deposit', amount: 5200.00, category: 'Income', date: '2024-01-01' },
-          { id: 3, name: 'Netflix Subscription', amount: -15.99, category: 'Entertainment', date: '2024-01-10' },
-          { id: 4, name: 'Gas Station', amount: -65.00, category: 'Transportation', date: '2024-01-12' },
-          { id: 5, name: 'Restaurant Dinner', amount: -185.00, category: 'Food & Dining', date: '2024-01-14' },
-          { id: 6, name: 'Electric Bill', amount: -145.32, category: 'Bills & Utilities', date: '2024-01-05' },
-          { id: 7, name: 'Coffee Shop', amount: -12.50, category: 'Food & Dining', date: '2024-01-16' },
-          { id: 8, name: 'Freelance Work', amount: 800.00, category: 'Income', date: '2024-01-18' },
-        ]
-        setTransactions(sampleTransactions)
       }
       
       setIsLoading(false)
@@ -35,7 +22,16 @@ export default function InsightsPage() {
     loadTransactions()
   }, [])
 
-  const monthlyIncome = 6000 // This would come from user settings or calculated from transactions
+  // Calculate monthly income from actual user data
+  const calculateMonthlyIncome = () => {
+    const incomeTransactions = transactions.filter(t => t.amount > 0)
+    if (incomeTransactions.length === 0) return 0
+    
+    const totalIncome = incomeTransactions.reduce((sum, t) => sum + t.amount, 0)
+    return Math.round(totalIncome)
+  }
+
+  const monthlyIncome = calculateMonthlyIncome()
   const financialGoals = ['Emergency Fund', 'Vacation', 'Investment Portfolio']
 
   if (isLoading) {

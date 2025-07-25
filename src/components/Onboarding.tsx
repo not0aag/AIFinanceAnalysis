@@ -64,42 +64,6 @@ export default function Onboarding({ onTransactionsAdded }: OnboardingProps) {
     onTransactionsAdded(transactions)
   }
 
-  const addDemoData = () => {
-    const demoTransactions: Transaction[] = [
-      {
-        id: 1,
-        name: 'Salary',
-        amount: 5000,
-        category: 'income',
-        date: new Date().toISOString().split('T')[0]
-      },
-      {
-        id: 2,
-        name: 'Rent',
-        amount: -1200,
-        category: 'expense',
-        date: new Date().toISOString().split('T')[0]
-      },
-      {
-        id: 3,
-        name: 'Groceries',
-        amount: -250,
-        category: 'expense',
-        date: new Date().toISOString().split('T')[0]
-      },
-      {
-        id: 4,
-        name: 'Coffee Shop',
-        amount: -45,
-        category: 'expense',
-        date: new Date().toISOString().split('T')[0]
-      }
-    ]
-    
-    setTransactions(demoTransactions)
-    setStep(3)
-  }
-
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4">
       <div className="max-w-2xl w-full">
@@ -165,6 +129,7 @@ export default function Onboarding({ onTransactionsAdded }: OnboardingProps) {
                     </label>
                     <input
                       type="number"
+                      step="0.01"
                       placeholder="0.00"
                       value={currentTransaction.amount}
                       onChange={(e) => setCurrentTransaction({...currentTransaction, amount: e.target.value})}
@@ -206,15 +171,6 @@ export default function Onboarding({ onTransactionsAdded }: OnboardingProps) {
               >
                 Add Transaction
               </button>
-
-              <div className="text-center">
-                <button
-                  onClick={addDemoData}
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
-                  Or try with demo data →
-                </button>
-              </div>
             </div>
           </div>
         )}
@@ -251,6 +207,7 @@ export default function Onboarding({ onTransactionsAdded }: OnboardingProps) {
                 <div className="grid grid-cols-2 gap-4">
                   <input
                     type="number"
+                    step="0.01"
                     placeholder="Amount"
                     value={currentTransaction.amount}
                     onChange={(e) => setCurrentTransaction({...currentTransaction, amount: e.target.value})}

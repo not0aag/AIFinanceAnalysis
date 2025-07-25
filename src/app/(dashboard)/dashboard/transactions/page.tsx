@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface Transaction {
   id: number
@@ -11,19 +11,29 @@ interface Transaction {
 }
 
 export default function TransactionsPage() {
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    { id: 1, name: 'Grocery Shopping', amount: -85.50, category: 'Food', date: 'Today' },
-    { id: 2, name: 'Salary Deposit', amount: 3200.00, category: 'Income', date: 'Yesterday' },
-    { id: 3, name: 'Coffee Shop', amount: -12.50, category: 'Food', date: 'Yesterday' },
-    { id: 4, name: 'Gas Station', amount: -65.00, category: 'Transportation', date: '2 days ago' }
-  ])
-
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
   const [newTransaction, setNewTransaction] = useState({
     name: '',
     amount: '',
     category: 'Food'
   })
+
+  useEffect(() => {
+    // Load transactions from localStorage
+    const loadTransactions = () => {
+      const savedTransactions = localStorage.getItem('finance-ai-transactions')
+      
+      if (savedTransactions) {
+        setTransactions(JSON.parse(savedTransactions))
+      }
+      
+      setIsLoading(false)
+    }
+
+    loadTransactions()
+  }, [])
 
   const handleAddTransaction = (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,17 +44,60 @@ export default function TransactionsPage() {
         name: newTransaction.name,
         amount: parseFloat(newTransaction.amount),
         category: newTransaction.category,
-        date: 'Just now'
+        date: new Date().toISOString().split('T')[0]
       }
       
-      setTransactions([transaction, ...transactions])
+      const updatedTransactions = [transaction, ...transactions]
+      setTransactions(updatedTransactions)
+      
+      // Save to localStorage
+      localStorage.setItem('finance-ai-transactions', JSON.stringify(updatedTransactions))
+      
       setNewTransaction({ name: '', amount: '', category: 'Food' })
       setShowAddForm(false)
     }
   }
 
+  const handleDeleteTransaction = (id: number) => {
+    const updatedTransactions = transactions.filter(t => t.id !== id)
+    setTransactions(updatedTransactions)
+    
+    // Update localStorage
+    localStorage.setItem('finance-ai-transactions', JSON.stringify(updatedTransactions))
+  }
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    const today = new Date()
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    
+    if (date.toDateString() === today.toDateString()) {
+      return 'Today'
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday'
+    } else {
+      const diffTime = Math.abs(today.getTime() - date.getTime())
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+      if (diffDays < 7) {
+        return `${diffDays} days ago`
+      } else {
+        return date.toLocaleDateString()
+      }
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="loading">
+        <div className="loading-spinner"></div>
+        <div className="text-body">Loading your transactions...</div>
+      </div>
+    )
+  }
+
   return (
-    <div>
+    <div className="fade-in">
       <div style={{ marginBottom: '2rem' }}>
         <h1>Transactions</h1>
         <p style={{ color: '#94a3b8' }}>Track and manage your financial transactions</p>
@@ -118,7 +171,7 @@ export default function TransactionsPage() {
                   step="0.01"
                   value={newTransaction.amount}
                   onChange={(e) => setNewTransaction({ ...newTransaction, amount: e.target.value })}
-                  placeholder="0.00"
+                  placeholder="0.00 (use negative for expenses)"
                   required
                   style={{
                     width: '100%',
@@ -185,64 +238,96 @@ export default function TransactionsPage() {
       )}
       
       {/* Transactions List */}
-      <div className="stat-card">
-        <h3 style={{ marginBottom: '1rem' }}>
-          Recent Transactions ({transactions.length})
-        </h3>
-        
-        {transactions.map((transaction, index) => (
-          <div key={transaction.id} style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '1rem 0',
-            borderBottom: index < transactions.length - 1 ? '1px solid #374151' : 'none'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <div style={{
-                width: '2rem',
-                height: '2rem',
-                backgroundColor: transaction.amount > 0 ? '#10b981' : '#ef4444',
-                borderRadius: '0.5rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '0.875rem'
-              }}>
-                {transaction.amount > 0 ? '↗️' : '↙️'}
-              </div>
-              <div>
-                <p style={{ fontWeight: '500', marginBottom: '0.25rem' }}>{transaction.name}</p>
-                <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>
-                  {transaction.category} • {transaction.date}
-                </p>
-              </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <div style={{
-                color: transaction.amount > 0 ? '#10b981' : '#ef4444',
-                fontWeight: '600',
-                fontSize: '1rem'
-              }}>
-                {transaction.amount > 0 ? '+' : ''}${Math.abs(transaction.amount).toFixed(2)}
-              </div>
-              <button
-                onClick={() => setTransactions(transactions.filter(t => t.id !== transaction.id))}
-                style={{
-                  backgroundColor: 'transparent',
-                  color: '#ef4444',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '0.25rem',
+      {transactions.length > 0 ? (
+        <div className="stat-card">
+          <h3 style={{ marginBottom: '1rem' }}>
+            Your Transactions ({transactions.length})
+          </h3>
+          
+          {transactions.map((transaction, index) => (
+            <div key={transaction.id} style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '1rem 0',
+              borderBottom: index < transactions.length - 1 ? '1px solid #374151' : 'none'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{
+                  width: '2rem',
+                  height: '2rem',
+                  backgroundColor: transaction.amount > 0 ? '#10b981' : '#ef4444',
+                  borderRadius: '0.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   fontSize: '0.875rem'
-                }}
-              >
-                🗑️
-              </button>
+                }}>
+                  {transaction.amount > 0 ? '↗️' : '↙️'}
+                </div>
+                <div>
+                  <p style={{ fontWeight: '500', marginBottom: '0.25rem' }}>{transaction.name}</p>
+                  <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>
+                    {transaction.category} • {formatDate(transaction.date)}
+                  </p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{
+                  color: transaction.amount > 0 ? '#10b981' : '#ef4444',
+                  fontWeight: '600',
+                  fontSize: '1rem'
+                }}>
+                  {transaction.amount > 0 ? '+' : ''}${Math.abs(transaction.amount).toFixed(2)}
+                </div>
+                <button
+                  onClick={() => handleDeleteTransaction(transaction.id)}
+                  style={{
+                    backgroundColor: 'transparent',
+                    color: '#ef4444',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '0.25rem',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  🗑️
+                </button>
+              </div>
             </div>
+          ))}
+        </div>
+      ) : (
+        <div className="stat-card">
+          <div style={{ textAlign: 'center', padding: '3rem 2rem' }}>
+            <div style={{
+              width: '80px',
+              height: '80px',
+              background: 'linear-gradient(135deg, var(--color-blue) 0%, var(--color-blue-dark) 100%)',
+              borderRadius: 'var(--radius-large)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto var(--space-8) auto',
+              fontSize: 'var(--font-size-title-2)',
+              color: 'white',
+              boxShadow: 'var(--shadow-medium)'
+            }}>
+              💳
+            </div>
+            <h3 style={{ marginBottom: '1rem' }}>No Transactions Yet</h3>
+            <p style={{ color: '#94a3b8', marginBottom: '2rem' }}>
+              Start by adding your first transaction to begin tracking your finances with AI insights.
+            </p>
+            <button
+              className="btn btn-primary"
+              onClick={() => setShowAddForm(true)}
+            >
+              Add First Transaction
+            </button>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
