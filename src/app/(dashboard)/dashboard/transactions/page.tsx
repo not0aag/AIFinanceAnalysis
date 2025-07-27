@@ -1,150 +1,58 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-
-interface Transaction {
-  id: number
-  name: string
-  amount: number
-  category: string
-  date: string
-}
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Transaction } from '@/types/finance'
+import TransactionForm from '@/components/transactions/TransactionForm'
+import TransactionList from '@/components/transactions/TransactionList'
+import TransactionFilters from '@/components/transactions/TransactionFilters'
+import TransactionSearch from '@/components/transactions/TransactionSearch'
+import TransactionStats from '@/components/transactions/TransactionStats'
+import BulkImport from '@/components/transactions/BulkImport'
+import { validateTransaction } from '@/lib/validation'
 
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [newTransaction, setNewTransaction] = useState({
-    name: '',
-    amount: '',
-    type: 'expense',
-    category: 'Food & Dining'
+  const [showForm, setShowForm] = useState(false)
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
+  const [showBulkImport, setShowBulkImport] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filters, setFilters] = useState({
+    type: 'all' as 'all' | 'income' | 'expense',
+    category: 'all',
+    dateRange: 'all' as 'all' | 'week' | 'month' | 'year' | 'custom',
+    customDateRange: {
+      start: '',
+      end: ''
+    },
+    minAmount: '',
+    maxAmount: '',
+    tags: [] as string[]
   })
+  const [sortBy, setSortBy] = useState<'date' | 'amount' | 'name'>('date')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set())
+  const [bulkAction, setBulkAction] = useState<'delete' | 'categorize' | 'tag' | null>(null)
 
-  // Comprehensive categories for expenses
-  const expenseCategories = [
-    'Food & Dining',
-    'Groceries', 
-    'Restaurants',
-    'Coffee & Snacks',
-    'Transportation',
-    'Gas & Fuel',
-    'Public Transit',
-    'Uber & Lyft',
-    'Parking',
-    'Car Maintenance',
-    'Housing',
-    'Rent',
-    'Mortgage',
-    'Property Tax',
-    'Home Insurance',
-    'Utilities',
-    'Electricity',
-    'Water',
-    'Internet',
-    'Phone',
-    'Gas Bill',
-    'Entertainment',
-    'Movies',
-    'Streaming Services',
-    'Games',
-    'Books',
-    'Music',
-    'Shopping',
-    'Clothing',
-    'Electronics',
-    'Home & Garden',
-    'Personal Care',
-    'Gifts',
-    'Healthcare',
-    'Doctor Visits',
-    'Pharmacy',
-    'Dental',
-    'Vision',
-    'Health Insurance',
-    'Fitness',
-    'Gym Membership',
-    'Sports',
-    'Education',
-    'Tuition',
-    'Books & Supplies',
-    'Online Courses',
-    'Professional',
-    'Business Expenses',
-    'Office Supplies',
-    'Software',
-    'Professional Services',
-    'Financial',
-    'Bank Fees',
-    'Credit Card Fees',
-    'Investment Fees',
-    'Insurance',
-    'Travel',
-    'Flights',
-    'Hotels',
-    'Vacation',
-    'Travel Insurance',
-    'Family',
-    'Childcare',
-    'Pet Care',
-    'Miscellaneous',
-    'Cash Withdrawal',
-    'Donations',
-    'Taxes',
-    'Other'
-  ]
-
-  // Comprehensive categories for income
-  const incomeCategories = [
-    'Salary',
-    'Hourly Wages',
-    'Overtime',
-    'Bonus',
-    'Commission',
-    'Freelance',
-    'Consulting',
-    'Contract Work',
-    'Business Income',
-    'Self Employment',
-    'Side Hustle',
-    'Investments',
-    'Dividends',
-    'Interest',
-    'Capital Gains',
-    'Rental Income',
-    'Royalties',
-    'Government',
-    'Tax Refund',
-    'Social Security',
-    'Unemployment',
-    'Disability',
-    'Child Support',
-    'Alimony',
-    'Other Income',
-    'Gift Money',
-    'Cash Gift',
-    'Inheritance',
-    'Lottery',
-    'Rebate',
-    'Refund',
-    'Reimbursement',
-    'Cashback',
-    'Reward Points',
-    'Found Money',
-    'Miscellaneous Income'
-  ]
-
-  const getCurrentCategories = () => {
-    return newTransaction.type === 'income' ? incomeCategories : expenseCategories
-  }
-
+  // Load transactions
   useEffect(() => {
-    // Load transactions from localStorage
     const loadTransactions = () => {
       const savedTransactions = localStorage.getItem('finance-ai-transactions')
       
       if (savedTransactions) {
-        setTransactions(JSON.parse(savedTransactions))
+        const parsed = JSON.parse(savedTransactions)
+        const typedTransactions: Transaction[] = parsed.map((t: any) => ({
+          ...t,
+          id: t.id?.toString() || Date.now().toString(),
+          userId: 'user-1',
+          type: t.amount > 0 ? 'income' : 'expense',
+          createdAt: t.createdAt || t.date,
+          updatedAt: t.updatedAt || t.date,
+          tags: t.tags || [],
+          isVerified: t.isVerified || false
+        }))
+        setTransactions(typedTransactions)
       }
       
       setIsLoading(false)
@@ -153,76 +61,190 @@ export default function TransactionsPage() {
     loadTransactions()
   }, [])
 
-  // Update category when type changes
-  useEffect(() => {
-    const categories = getCurrentCategories()
-    if (!categories.includes(newTransaction.category)) {
-      setNewTransaction(prev => ({
-        ...prev,
-        category: categories[0]
-      }))
-    }
-  }, [newTransaction.type])
+  // Filter and sort transactions
+  const filteredTransactions = useMemo(() => {
+    let filtered = transactions
 
-  const handleAddTransaction = (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (newTransaction.name && newTransaction.amount) {
-      // Calculate the correct amount based on type
-      let amount = Math.abs(parseFloat(newTransaction.amount))
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(t => 
+        t.name.toLowerCase().includes(query) ||
+        t.category.toLowerCase().includes(query) ||
+        t.merchant?.toLowerCase().includes(query) ||
+        t.notes?.toLowerCase().includes(query) ||
+        t.tags?.some(tag => tag.toLowerCase().includes(query))
+      )
+    }
+
+    // Type filter
+    if (filters.type !== 'all') {
+      filtered = filtered.filter(t => t.type === filters.type)
+    }
+
+    // Category filter
+    if (filters.category !== 'all') {
+      filtered = filtered.filter(t => t.category === filters.category)
+    }
+
+    // Date range filter
+    if (filters.dateRange !== 'all') {
+      const now = new Date()
+      const startOfDay = (date: Date) => {
+        date.setHours(0, 0, 0, 0)
+        return date
+      }
+
+      let startDate: Date
+      let endDate = new Date()
+
+      switch (filters.dateRange) {
+        case 'week':
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+          break
+        case 'month':
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+          break
+        case 'year':
+          startDate = new Date(now.getFullYear(), 0, 1)
+          break
+        case 'custom':
+          if (filters.customDateRange.start && filters.customDateRange.end) {
+            startDate = new Date(filters.customDateRange.start)
+            endDate = new Date(filters.customDateRange.end)
+          } else {
+            startDate = new Date(0)
+          }
+          break
+        default:
+          startDate = new Date(0)
+      }
+
+      filtered = filtered.filter(t => {
+        const transactionDate = new Date(t.date)
+        return transactionDate >= startOfDay(startDate) && transactionDate <= endDate
+      })
+    }
+
+    // Amount filter
+    if (filters.minAmount) {
+      const min = parseFloat(filters.minAmount)
+      filtered = filtered.filter(t => Math.abs(t.amount) >= min)
+    }
+    if (filters.maxAmount) {
+      const max = parseFloat(filters.maxAmount)
+      filtered = filtered.filter(t => Math.abs(t.amount) <= max)
+    }
+
+    // Tags filter
+    if (filters.tags.length > 0) {
+      filtered = filtered.filter(t => 
+        t.tags?.some(tag => filters.tags.includes(tag))
+      )
+    }
+
+    // Sort
+    filtered.sort((a, b) => {
+      let comparison = 0
       
-      // Make expenses negative, keep income positive
-      if (newTransaction.type === 'expense') {
-        amount = -amount
+      switch (sortBy) {
+        case 'date':
+          comparison = new Date(a.date).getTime() - new Date(b.date).getTime()
+          break
+        case 'amount':
+          comparison = Math.abs(a.amount) - Math.abs(b.amount)
+          break
+        case 'name':
+          comparison = a.name.localeCompare(b.name)
+          break
       }
       
-      const transaction: Transaction = {
-        id: Date.now(),
-        name: newTransaction.name,
-        amount: amount,
-        category: newTransaction.category,
-        date: new Date().toISOString().split('T')[0]
+      return sortOrder === 'asc' ? comparison : -comparison
+    })
+
+    return filtered
+  }, [transactions, searchQuery, filters, sortBy, sortOrder])
+
+  // Transaction management
+  const handleAddTransaction = useCallback(async (transactionData: Omit<Transaction, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      // Validate transaction
+      const validation = validateTransaction(transactionData)
+      if (!validation.isValid) {
+        alert(validation.errors.join('\n'))
+        return
+      }
+
+      const newTransaction: Transaction = {
+        ...transactionData,
+        id: Date.now().toString(),
+        userId: 'user-1',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       }
       
-      const updatedTransactions = [transaction, ...transactions]
-      setTransactions(updatedTransactions)
+      const updated = [...transactions, newTransaction]
+      setTransactions(updated)
+      localStorage.setItem('finance-ai-transactions', JSON.stringify(updated))
       
-      // Save to localStorage
-      localStorage.setItem('finance-ai-transactions', JSON.stringify(updatedTransactions))
-      
-      setNewTransaction({ name: '', amount: '', type: 'expense', category: 'Food & Dining' })
-      setShowAddForm(false)
+      setShowForm(false)
+    } catch (error) {
+      console.error('Error adding transaction:', error)
+      alert('Failed to add transaction')
     }
-  }
+  }, [transactions])
 
-  const handleDeleteTransaction = (id: number) => {
-    const updatedTransactions = transactions.filter(t => t.id !== id)
-    setTransactions(updatedTransactions)
-    
-    // Update localStorage
-    localStorage.setItem('finance-ai-transactions', JSON.stringify(updatedTransactions))
-  }
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    const today = new Date()
-    const yesterday = new Date(today)
-    yesterday.setDate(yesterday.getDate() - 1)
-    
-    if (date.toDateString() === today.toDateString()) {
-      return 'Today'
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return 'Yesterday'
-    } else {
-      const diffTime = Math.abs(today.getTime() - date.getTime())
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-      if (diffDays < 7) {
-        return `${diffDays} days ago`
-      } else {
-        return date.toLocaleDateString()
+  const handleUpdateTransaction = useCallback(async (updatedTransaction: Transaction) => {
+    try {
+      const validation = validateTransaction(updatedTransaction)
+      if (!validation.isValid) {
+        alert(validation.errors.join('\n'))
+        return
       }
+
+      const updated = transactions.map(t => 
+        t.id === updatedTransaction.id 
+          ? { ...updatedTransaction, updatedAt: new Date().toISOString() }
+          : t
+      )
+      
+      setTransactions(updated)
+      localStorage.setItem('finance-ai-transactions', JSON.stringify(updated))
+      
+      setEditingTransaction(null)
+      setShowForm(false)
+    } catch (error) {
+      console.error('Error updating transaction:', error)
+      alert('Failed to update transaction')
     }
-  }
+  }, [transactions])
+
+  const handleDeleteTransaction = useCallback((id: string) => {
+    if (confirm('Are you sure you want to delete this transaction?')) {
+      const updated = transactions.filter(t => t.id !== id)
+      setTransactions(updated)
+      localStorage.setItem('finance-ai-transactions', JSON.stringify(updated))
+    }
+  }, [transactions])
+
+  const handleBulkDelete = useCallback(() => {
+    if (selectedTransactions.size === 0) return
+    
+    if (confirm(`Are you sure you want to delete ${selectedTransactions.size} transactions?`)) {
+      const updated = transactions.filter(t => !selectedTransactions.has(t.id))
+      setTransactions(updated)
+      localStorage.setItem('finance-ai-transactions', JSON.stringify(updated))
+      setSelectedTransactions(new Set())
+      setBulkAction(null)
+    }
+  }, [transactions, selectedTransactions])
+
+  const handleBulkImport = useCallback((importedTransactions: Transaction[]) => {
+    const updated = [...transactions, ...importedTransactions]
+    setTransactions(updated)
+    localStorage.setItem('finance-ai-transactions', JSON.stringify(updated))
+    setShowBulkImport(false)
+  }, [transactions])
 
   if (isLoading) {
     return (
@@ -234,310 +256,235 @@ export default function TransactionsPage() {
   }
 
   return (
-    <div className="fade-in">
-      <div style={{ marginBottom: '2rem' }}>
-        <h1>Transactions</h1>
-        <p style={{ color: '#94a3b8' }}>Track and manage your financial transactions</p>
-      </div>
-      
-      {/* Add Transaction Button */}
-      <div style={{ marginBottom: '2rem' }}>
-        <button 
-          onClick={() => setShowAddForm(!showAddForm)}
-          style={{
-            backgroundColor: showAddForm ? '#ef4444' : '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '0.5rem',
-            padding: '0.75rem 1.5rem',
-            fontWeight: '500',
-            cursor: 'pointer',
-            transition: 'background-color 0.2s ease'
-          }}
-        >
-          {showAddForm ? '✕ Cancel' : '+ Add Transaction'}
-        </button>
+    <motion.div 
+      className="fade-in"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+    >
+      {/* Enhanced Header */}
+      <div className="page-header" style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'flex-start',
+        flexWrap: 'wrap',
+        gap: 'var(--space-4)',
+        marginBottom: 'var(--space-8)'
+      }}>
+        <div>
+          <h1 className="page-title">Transactions</h1>
+          <p className="page-subtitle">
+            {filteredTransactions.length} of {transactions.length} transactions
+          </p>
+        </div>
+        
+        <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowBulkImport(true)}
+          >
+            📥 Import
+          </button>
+          <motion.button
+            className="btn btn-primary"
+            onClick={() => {
+              setEditingTransaction(null)
+              setShowForm(true)
+            }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            + Add Transaction
+          </motion.button>
+        </div>
       </div>
 
-      {/* Add Transaction Form */}
-      {showAddForm && (
-        <div className="stat-card" style={{ marginBottom: '2rem' }}>
-          <h3 style={{ marginBottom: '1rem' }}>Add New Transaction</h3>
-          <form onSubmit={handleAddTransaction} style={{ display: 'grid', gap: '1rem' }}>
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '0.875rem',
-                fontWeight: '500',
-                marginBottom: '0.5rem',
-                color: '#94a3b8'
-              }}>
-                Description
-              </label>
-              <input
-                type="text"
-                value={newTransaction.name}
-                onChange={(e) => setNewTransaction({ ...newTransaction, name: e.target.value })}
-                placeholder="Enter transaction description"
-                required
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  backgroundColor: '#374151',
-                  border: '1px solid #4b5563',
-                  borderRadius: '0.5rem',
-                  color: 'white',
-                  fontSize: '0.875rem'
-                }}
-              />
-            </div>
-            
-            {/* Type Selector */}
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '0.875rem',
-                fontWeight: '500',
-                marginBottom: '0.5rem',
-                color: '#94a3b8'
-              }}>
-                Type
-              </label>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button
-                  type="button"
-                  onClick={() => setNewTransaction({ ...newTransaction, type: 'expense' })}
-                  style={{
-                    flex: 1,
-                    padding: '0.75rem',
-                    border: '2px solid',
-                    borderColor: newTransaction.type === 'expense' ? '#ef4444' : '#4b5563',
-                    borderRadius: '0.5rem',
-                    backgroundColor: newTransaction.type === 'expense' ? 'rgba(239, 68, 68, 0.1)' : '#374151',
-                    color: newTransaction.type === 'expense' ? '#ef4444' : '#94a3b8',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  💸 Expense
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setNewTransaction({ ...newTransaction, type: 'income' })}
-                  style={{
-                    flex: 1,
-                    padding: '0.75rem',
-                    border: '2px solid',
-                    borderColor: newTransaction.type === 'income' ? '#10b981' : '#4b5563',
-                    borderRadius: '0.5rem',
-                    backgroundColor: newTransaction.type === 'income' ? 'rgba(16, 185, 129, 0.1)' : '#374151',
-                    color: newTransaction.type === 'income' ? '#10b981' : '#94a3b8',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  💰 Income
-                </button>
-              </div>
-            </div>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '0.875rem',
-                  fontWeight: '500',
-                  marginBottom: '0.5rem',
-                  color: '#94a3b8'
-                }}>
-                  Amount ($)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={newTransaction.amount}
-                  onChange={(e) => setNewTransaction({ ...newTransaction, amount: e.target.value })}
-                  placeholder="0.00"
-                  required
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    backgroundColor: '#374151',
-                    border: '1px solid #4b5563',
-                    borderRadius: '0.5rem',
-                    color: 'white',
-                    fontSize: '0.875rem'
-                  }}
-                />
-                <p style={{ 
-                  fontSize: '0.75rem', 
-                  color: '#6b7280', 
-                  marginTop: '0.25rem',
-                  fontStyle: 'italic'
-                }}>
-                  Enter positive amount only
-                </p>
-              </div>
-              
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '0.875rem',
-                  fontWeight: '500',
-                  marginBottom: '0.5rem',
-                  color: '#94a3b8'
-                }}>
-                  Category
-                </label>
-                <select
-                  value={newTransaction.category}
-                  onChange={(e) => setNewTransaction({ ...newTransaction, category: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    backgroundColor: '#374151',
-                    border: '1px solid #4b5563',
-                    borderRadius: '0.5rem',
-                    color: 'white',
-                    fontSize: '0.875rem'
-                  }}
-                >
-                  {getCurrentCategories().map(category => (
-                    <option key={category} value={category}>{category}</option>
-                  ))}
-                </select>
-                <p style={{ 
-                  fontSize: '0.75rem', 
-                  color: '#6b7280', 
-                  marginTop: '0.25rem',
-                  fontStyle: 'italic'
-                }}>
-                  Categories change based on {newTransaction.type} type
-                </p>
-              </div>
-            </div>
-            
-            <button
-              type="submit"
-              style={{
-                backgroundColor: '#10b981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '0.5rem',
-                padding: '0.75rem 1.5rem',
-                fontWeight: '500',
-                cursor: 'pointer'
-              }}
-            >
-              Add Transaction
-            </button>
-          </form>
-        </div>
-      )}
-      
-      {/* Transactions List */}
-      {transactions.length > 0 ? (
-        <div className="stat-card">
-          <h3 style={{ marginBottom: '1rem' }}>
-            Your Transactions ({transactions.length})
-          </h3>
-          
-          {transactions.map((transaction, index) => (
-            <div key={transaction.id} style={{
+      {/* Transaction Stats */}
+      <TransactionStats 
+        transactions={filteredTransactions}
+        allTransactions={transactions}
+      />
+
+      {/* Search and Filters */}
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: '1fr auto',
+        gap: 'var(--space-6)',
+        marginTop: 'var(--space-8)',
+        marginBottom: 'var(--space-6)'
+      }}>
+        <TransactionSearch
+          value={searchQuery}
+          onChange={setSearchQuery}
+          resultCount={filteredTransactions.length}
+        />
+        
+        <TransactionFilters
+          filters={filters}
+          onFilterChange={setFilters}
+          transactions={transactions}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSortChange={(by, order) => {
+            setSortBy(by as 'date' | 'amount' | 'name')
+            setSortOrder(order as 'asc' | 'desc')
+          }}
+        />
+      </div>
+
+      {/* Bulk Actions Bar */}
+      <AnimatePresence>
+        {selectedTransactions.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '1rem 0',
-              borderBottom: index < transactions.length - 1 ? '1px solid #374151' : 'none'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div style={{
-                  width: '2.5rem',
-                  height: '2.5rem',
-                  backgroundColor: transaction.amount > 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                  border: transaction.amount > 0 ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
-                  borderRadius: '0.5rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '0.875rem'
-                }}>
-                  {transaction.amount > 0 ? '💰' : '💸'}
-                </div>
-                <div>
-                  <p style={{ fontWeight: '500', marginBottom: '0.25rem' }}>{transaction.name}</p>
-                  <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>
-                    {transaction.category} • {formatDate(transaction.date)}
-                  </p>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div style={{
-                  color: transaction.amount > 0 ? '#10b981' : '#ef4444',
-                  fontWeight: '600',
-                  fontSize: '1rem'
-                }}>
-                  {transaction.amount > 0 ? '+' : ''}${Math.abs(transaction.amount).toFixed(2)}
-                </div>
-                <button
-                  onClick={() => handleDeleteTransaction(transaction.id)}
-                  style={{
-                    backgroundColor: 'transparent',
-                    color: '#ef4444',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: '0.25rem',
-                    fontSize: '1rem',
-                    borderRadius: '0.25rem',
-                    transition: 'background-color 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent'
-                  }}
-                  title="Delete transaction"
-                >
-                  🗑️
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="stat-card">
-          <div style={{ textAlign: 'center', padding: '3rem 2rem' }}>
-            <div style={{
-              width: '80px',
-              height: '80px',
-              background: 'linear-gradient(135deg, var(--color-blue) 0%, var(--color-blue-dark) 100%)',
-              borderRadius: 'var(--radius-large)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto var(--space-8) auto',
-              fontSize: 'var(--font-size-title-2)',
+              padding: 'var(--space-4)',
+              background: 'var(--color-blue)',
               color: 'white',
-              boxShadow: 'var(--shadow-medium)'
-            }}>
-              💳
+              borderRadius: 'var(--radius-medium)',
+              marginBottom: 'var(--space-6)'
+            }}
+          >
+            <span>{selectedTransactions.size} selected</span>
+            <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setSelectedTransactions(new Set())}
+                style={{ 
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  color: 'white',
+                  border: '1px solid rgba(255, 255, 255, 0.3)'
+                }}
+              >
+                Clear
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={handleBulkDelete}
+                style={{ 
+                  background: 'var(--color-red)',
+                  color: 'white',
+                  border: 'none'
+                }}
+              >
+                Delete Selected
+              </button>
             </div>
-            <h3 style={{ marginBottom: '1rem' }}>No Transactions Yet</h3>
-            <p style={{ color: '#94a3b8', marginBottom: '2rem' }}>
-              Start by adding your first transaction to begin tracking your finances with AI insights.
-            </p>
-            <button
-              className="btn btn-primary"
-              onClick={() => setShowAddForm(true)}
-            >
-              Add First Transaction
-            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Transaction List */}
+      {filteredTransactions.length > 0 ? (
+        <TransactionList
+          transactions={filteredTransactions}
+          selectedTransactions={selectedTransactions}
+          onSelectionChange={setSelectedTransactions}
+          onEdit={(transaction) => {
+            setEditingTransaction(transaction)
+            setShowForm(true)
+          }}
+          onDelete={handleDeleteTransaction}
+          onDuplicate={(transaction) => {
+            const duplicate = {
+              ...transaction,
+              id: Date.now().toString(),
+              name: `${transaction.name} (Copy)`,
+              date: new Date().toISOString().split('T')[0],
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            }
+            handleAddTransaction(duplicate)
+          }}
+        />
+      ) : (
+        /* Empty State */
+        <div className="content-card">
+          <div className="content-card-body" style={{ textAlign: 'center', padding: 'var(--space-16)' }}>
+            {transactions.length === 0 ? (
+              <>
+                <motion.div
+                  style={{
+                    width: '120px',
+                    height: '120px',
+                    background: 'linear-gradient(135deg, var(--color-blue) 0%, var(--color-blue-dark) 100%)',
+                    borderRadius: 'var(--radius-large)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto var(--space-8) auto',
+                    fontSize: '60px',
+                    color: 'white'
+                  }}
+                  animate={{ 
+                    y: [0, -10, 0]
+                  }}
+                  transition={{ 
+                    duration: 2,
+                    repeat: Infinity
+                  }}
+                >
+                  💳
+                </motion.div>
+                <h2 className="text-title-2" style={{ marginBottom: 'var(--space-4)' }}>
+                  No Transactions Yet
+                </h2>
+                <p className="text-body" style={{ 
+                  color: 'var(--color-text-secondary)',
+                  marginBottom: 'var(--space-8)'
+                }}>
+                  Start tracking your finances by adding your first transaction.
+                </p>
+                <motion.button
+                  className="btn btn-primary btn-large"
+                  onClick={() => setShowForm(true)}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  Add First Transaction
+                </motion.button>
+              </>
+            ) : (
+              <>
+                <h3 className="text-title-3" style={{ marginBottom: 'var(--space-4)' }}>
+                  No Matching Transactions
+                </h3>
+                <p className="text-body" style={{ color: 'var(--color-text-secondary)' }}>
+                  Try adjusting your filters or search query.
+                </p>
+              </>
+            )}
           </div>
         </div>
       )}
-    </div>
+
+      {/* Transaction Form Modal */}
+      <AnimatePresence>
+        {showForm && (
+          <TransactionForm
+            transaction={editingTransaction}
+            onSave={editingTransaction ? handleUpdateTransaction : handleAddTransaction}
+            onClose={() => {
+              setShowForm(false)
+              setEditingTransaction(null)
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Bulk Import Modal */}
+      <AnimatePresence>
+        {showBulkImport && (
+          <BulkImport
+            onImport={handleBulkImport}
+            onClose={() => setShowBulkImport(false)}
+          />
+        )}
+      </AnimatePresence>
+    </motion.div>
   )
 }

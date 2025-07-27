@@ -25,15 +25,28 @@ export async function POST(request: Request) {
       );
     }
 
+    // Calculate monthly expenses from transactions
     const monthlyExpenses = transactions
-      .filter((t: any) => t.amount < 0)
+      .filter((t: any) => t.type === "expense" || t.amount < 0)
       .reduce((sum: number, t: any) => sum + Math.abs(t.amount), 0);
 
     const profile = {
+      userId: 'user-1',
       monthlyIncome,
       monthlyExpenses,
       savingsGoal: 1000,
       riskTolerance: "moderate" as const,
+      financialGoals: [],
+      preferences: {
+        currency: 'USD',
+        timezone: 'America/New_York',
+        fiscalYearStart: 1,
+        notifications: {
+          email: true,
+          push: true,
+          sms: false
+        }
+      }
     };
 
     // Run all AI analyses in parallel
@@ -41,8 +54,8 @@ export async function POST(request: Request) {
       generateAdvancedInsights(transactions, profile),
       detectSpendingAnomalies(transactions),
       generateSavingsStrategy(
+        transactions,
         monthlyIncome,
-        monthlyExpenses,
         financialGoals || []
       ),
     ]);

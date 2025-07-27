@@ -1,14 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-
-interface Transaction {
-  id: number
-  name: string
-  amount: number
-  category: string
-  date: string
-}
+import { Transaction } from '@/types/finance'
 
 interface OnboardingProps {
   onTransactionsAdded: (transactions: Transaction[]) => void
@@ -166,11 +159,17 @@ export default function Onboarding({ onTransactionsAdded }: OnboardingProps) {
     }
 
     const newTransaction: Transaction = {
-      id: Date.now(),
+      id: Date.now().toString(),
+      userId: 'user-1',
       name: currentTransaction.name,
       amount: amount,
       category: currentTransaction.category,
-      date: currentTransaction.date
+      date: currentTransaction.date,
+      type: currentTransaction.type as 'income' | 'expense',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      tags: [],
+      isVerified: false
     }
 
     const updatedTransactions = [...transactions, newTransaction]
@@ -191,7 +190,7 @@ export default function Onboarding({ onTransactionsAdded }: OnboardingProps) {
     }
   }
 
-  const removeTransaction = (id: number) => {
+  const removeTransaction = (id: string) => {
     const updatedTransactions = transactions.filter(t => t.id !== id)
     setTransactions(updatedTransactions)
     

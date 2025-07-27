@@ -1,43 +1,88 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import Onboarding from '@/components/Onboarding'
-
-interface Transaction {
-  id: number
-  name: string
-  amount: number
-  category: string
-  date: string
-}
+import { Transaction, FinancialGoal, SpendingPattern } from '@/types/finance'
+import { calculateFinancialMetrics, formatCurrency } from '@/lib/finance-utils'
+import QuickStats from '@/components/dashboard/QuickStats'
+import SpendingTrends from '@/components/dashboard/SpendingTrends'
+import GoalProgress from '@/components/dashboard/GoalProgress'
+import RecentActivity from '@/components/dashboard/RecentActivity'
+import AIAssistant from '@/components/dashboard/AIAssistant'
 
 export default function DashboardPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [goals, setGoals] = useState<FinancialGoal[]>([])
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'year'>('month')
 
+  // Load data with error handling
   useEffect(() => {
-    // Check if user has any transactions
-    const checkUserData = async () => {
-      // Check localStorage for real user transactions only
-      const savedTransactions = localStorage.getItem('finance-ai-transactions')
-      
-      if (savedTransactions) {
-        const parsedTransactions = JSON.parse(savedTransactions)
-        setTransactions(parsedTransactions)
+    const loadDashboardData = async () => {
+      try {
+        setIsLoading(true)
+        
+        // Load transactions
+        const savedTransactions = localStorage.getItem('finance-ai-transactions')
+        if (savedTransactions) {
+          const parsed = JSON.parse(savedTransactions)
+          // Ensure transactions have proper types
+          const typedTransactions: Transaction[] = parsed.map((t: any) => ({
+            ...t,
+            id: t.id?.toString() || Date.now().toString(),
+            userId: 'user-1',
+            type: t.amount > 0 ? 'income' : 'expense',
+            createdAt: t.createdAt || t.date,
+            updatedAt: t.updatedAt || t.date
+          }))
+          setTransactions(typedTransactions)
+        }
+        
+        // Load goals
+        const savedGoals = localStorage.getItem('finance-ai-goals')
+        if (savedGoals) {
+          setGoals(JSON.parse(savedGoals))
+        }
+      } catch (error) {
+        console.error('Error loading dashboard data:', error)
+      } finally {
+        setIsLoading(false)
       }
-      
-      setIsLoading(false)
     }
 
-    checkUserData()
+    loadDashboardData()
+  }, [refreshKey])
+
+  // Calculate financial metrics with memoization
+  const metrics = useMemo(() => 
+    calculateFinancialMetrics(transactions, selectedPeriod),
+    [transactions, selectedPeriod]
+  )
+
+  // Handle transaction updates
+  const handleTransactionUpdate = useCallback((updatedTransactions: Transaction[]) => {
+    setTransactions(updatedTransactions)
+    localStorage.setItem('finance-ai-transactions', JSON.stringify(updatedTransactions))
+    setRefreshKey(prev => prev + 1)
   }, [])
 
-  const handleOnboardingComplete = (newTransactions: Transaction[]) => {
-    setTransactions(newTransactions)
-    localStorage.setItem('finance-ai-transactions', JSON.stringify(newTransactions))
+  // Handle onboarding completion
+  const handleOnboardingComplete = useCallback((newTransactions: Transaction[]) => {
+    handleTransactionUpdate(newTransactions)
     setShowOnboarding(false)
-  }
+  }, [handleTransactionUpdate])
+
+  // Auto-refresh data every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRefreshKey(prev => prev + 1)
+    }, 5 * 60 * 1000)
+    
+    return () => clearInterval(interval)
+  }, [])
 
   if (isLoading) {
     return (
@@ -48,14 +93,38 @@ export default function DashboardPage() {
     )
   }
 
-  // Show welcome screen for new users (no transactions)
+  // Show welcome screen for new users
   if (transactions.length === 0) {
     return (
       <div className="welcome-layout">
-        <div className="welcome-content fade-in">
-          {/* Hero Section */}
-          <div style={{ marginBottom: 'var(--space-16)' }}>
-            <div className="hero-icon">$</div>
+        <motion.div 
+          className="welcome-content"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          {/* Enhanced Hero Section with Animation */}
+          <motion.div 
+            style={{ marginBottom: 'var(--space-16)' }}
+            initial={{ scale: 0.9 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+          >
+            <div className="hero-icon">
+              <motion.span
+                animate={{ 
+                  rotate: [0, -10, 10, -10, 0],
+                  scale: [1, 1.1, 1]
+                }}
+                transition={{ 
+                  duration: 2,
+                  repeat: Infinity,
+                  repeatDelay: 3
+                }}
+              >
+                $
+              </motion.span>
+            </div>
             
             <h1 className="text-large-title" style={{ 
               marginBottom: 'var(--space-4)',
@@ -73,97 +142,85 @@ export default function DashboardPage() {
               maxWidth: '600px',
               margin: '0 auto var(--space-12) auto'
             }}>
-              Your intelligent financial companion is ready to transform how you manage money. 
-              Let's start by understanding your financial story.
+              Your AI-powered financial companion that learns from your habits 
+              and helps you make smarter money decisions.
             </p>
-          </div>
+          </motion.div>
 
-          {/* Feature Cards */}
+          {/* Enhanced Feature Cards with Stagger Animation */}
           <div className="grid grid-auto" style={{ marginBottom: 'var(--space-16)' }}>
-            <div className="content-card scale-in" style={{ animationDelay: '0.2s' }}>
-              <div className="content-card-body" style={{ textAlign: 'center', padding: 'var(--space-10)' }}>
-                <div style={{
-                  width: '64px',
-                  height: '64px',
-                  background: 'linear-gradient(135deg, var(--color-green) 0%, var(--color-green-dark) 100%)',
-                  borderRadius: 'var(--radius-large)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto var(--space-6) auto',
-                  fontSize: 'var(--font-size-title-2)',
-                  color: 'white',
-                  boxShadow: 'var(--shadow-medium)'
-                }}>
-                  📊
+            {[
+              {
+                icon: '📊',
+                title: 'Smart Analytics',
+                description: 'AI-driven insights that adapt to your spending patterns and financial goals.',
+                gradient: 'linear-gradient(135deg, var(--color-green) 0%, var(--color-green-dark) 100%)'
+              },
+              {
+                icon: '🤖',
+                title: 'Predictive AI',
+                description: 'Forecast future expenses and get alerts before you overspend.',
+                gradient: 'linear-gradient(135deg, var(--color-purple) 0%, #8e44ad 100%)'
+              },
+              {
+                icon: '🎯',
+                title: 'Goal Automation',
+                description: 'Set it and forget it - we\'ll help you reach your financial goals automatically.',
+                gradient: 'linear-gradient(135deg, var(--color-orange) 0%, #e6890a 100%)'
+              }
+            ].map((feature, index) => (
+              <motion.div
+                key={index}
+                className="content-card"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 + index * 0.1 }}
+                whileHover={{ 
+                  scale: 1.05,
+                  boxShadow: 'var(--shadow-large)'
+                }}
+              >
+                <div className="content-card-body" style={{ textAlign: 'center', padding: 'var(--space-10)' }}>
+                  <motion.div
+                    style={{
+                      width: '64px',
+                      height: '64px',
+                      background: feature.gradient,
+                      borderRadius: 'var(--radius-large)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto var(--space-6) auto',
+                      fontSize: 'var(--font-size-title-2)',
+                      color: 'white',
+                      boxShadow: 'var(--shadow-medium)'
+                    }}
+                    whileHover={{ rotate: 360 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    {feature.icon}
+                  </motion.div>
+                  <h3 className="text-title-3" style={{ marginBottom: 'var(--space-3)' }}>
+                    {feature.title}
+                  </h3>
+                  <p className="text-body" style={{ color: 'var(--color-text-secondary)' }}>
+                    {feature.description}
+                  </p>
                 </div>
-                <h3 className="text-title-3" style={{ marginBottom: 'var(--space-3)' }}>
-                  Smart Analytics
-                </h3>
-                <p className="text-body" style={{ color: 'var(--color-text-secondary)' }}>
-                  Get personalized insights about your spending patterns and financial health with advanced AI.
-                </p>
-              </div>
-            </div>
-
-            <div className="content-card scale-in" style={{ animationDelay: '0.4s' }}>
-              <div className="content-card-body" style={{ textAlign: 'center', padding: 'var(--space-10)' }}>
-                <div style={{
-                  width: '64px',
-                  height: '64px',
-                  background: 'linear-gradient(135deg, var(--color-purple) 0%, #8e44ad 100%)',
-                  borderRadius: 'var(--radius-large)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto var(--space-6) auto',
-                  fontSize: 'var(--font-size-title-2)',
-                  color: 'white',
-                  boxShadow: 'var(--shadow-medium)'
-                }}>
-                  🤖
-                </div>
-                <h3 className="text-title-3" style={{ marginBottom: 'var(--space-3)' }}>
-                  AI Recommendations
-                </h3>
-                <p className="text-body" style={{ color: 'var(--color-text-secondary)' }}>
-                  Receive tailored advice to optimize your budget and maximize savings potential.
-                </p>
-              </div>
-            </div>
-
-            <div className="content-card scale-in" style={{ animationDelay: '0.6s' }}>
-              <div className="content-card-body" style={{ textAlign: 'center', padding: 'var(--space-10)' }}>
-                <div style={{
-                  width: '64px',
-                  height: '64px',
-                  background: 'linear-gradient(135deg, var(--color-orange) 0%, #e6890a 100%)',
-                  borderRadius: 'var(--radius-large)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto var(--space-6) auto',
-                  fontSize: 'var(--font-size-title-2)',
-                  color: 'white',
-                  boxShadow: 'var(--shadow-medium)'
-                }}>
-                  🎯
-                </div>
-                <h3 className="text-title-3" style={{ marginBottom: 'var(--space-3)' }}>
-                  Goal Tracking
-                </h3>
-                <p className="text-body" style={{ color: 'var(--color-text-secondary)' }}>
-                  Set financial goals and track your progress with intelligent forecasting.
-                </p>
-              </div>
-            </div>
+              </motion.div>
+            ))}
           </div>
 
-          {/* Call to Action */}
-          <div className="content-card slide-up" style={{ animationDelay: '0.8s' }}>
+          {/* Enhanced CTA */}
+          <motion.div 
+            className="content-card"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.8 }}
+          >
             <div className="content-card-body" style={{ textAlign: 'center', padding: 'var(--space-12)' }}>
               <h2 className="text-title-2" style={{ marginBottom: 'var(--space-4)' }}>
-                Ready to Begin Your Financial Journey?
+                Ready to Transform Your Finances?
               </h2>
               <p className="text-body" style={{ 
                 color: 'var(--color-text-secondary)',
@@ -171,210 +228,236 @@ export default function DashboardPage() {
                 maxWidth: '500px',
                 margin: '0 auto var(--space-8) auto'
               }}>
-                Add your first transaction to start getting personalized AI insights about your spending patterns. 
-                The more you add, the smarter your insights become.
+                Start with your first transaction and watch as our AI learns your patterns 
+                to provide personalized insights and recommendations.
               </p>
               
-              <button
+              <motion.button
                 className="btn btn-primary btn-large"
                 onClick={() => setShowOnboarding(true)}
-                style={{ minWidth: '200px' }}
+                style={{ minWidth: '250px' }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
-                Add Your First Transaction
-              </button>
+                Start Your Financial Journey
+              </motion.button>
+              
+              <p className="text-caption-1" style={{ marginTop: 'var(--space-4)' }}>
+                Takes less than 2 minutes • No credit card required
+              </p>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
-        {/* Show Onboarding Modal */}
+        {/* Enhanced Onboarding Modal */}
+        <AnimatePresence>
+          {showOnboarding && (
+            <motion.div 
+              className="modal-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div 
+                className="modal-content"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+              >
+                <Onboarding onTransactionsAdded={handleOnboardingComplete} />
+                <button
+                  onClick={() => setShowOnboarding(false)}
+                  className="modal-close"
+                >
+                  ×
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    )
+  }
+
+  // Main dashboard with data
+  return (
+    <motion.div 
+      className="fade-in"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+    >
+      {/* Enhanced Page Header with Period Selector */}
+      <div className="page-header" style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'flex-start',
+        flexWrap: 'wrap',
+        gap: 'var(--space-4)'
+      }}>
+        <div>
+          <h1 className="page-title">Financial Overview</h1>
+          <p className="page-subtitle">
+            {new Date().toLocaleDateString('en-US', { 
+              weekday: 'long', 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            })}
+          </p>
+        </div>
+        
+        {/* Period Selector */}
+        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+          {(['week', 'month', 'year'] as const).map(period => (
+            <button
+              key={period}
+              onClick={() => setSelectedPeriod(period)}
+              className={`btn ${selectedPeriod === period ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ 
+                padding: 'var(--space-2) var(--space-4)',
+                fontSize: 'var(--font-size-footnote)',
+                textTransform: 'capitalize'
+              }}
+            >
+              {period}
+            </button>
+          ))}
+        </div>
+      </div>
+      
+      {/* Enhanced Quick Stats */}
+      <QuickStats metrics={metrics} period={selectedPeriod} />
+      
+      {/* Main Content Grid */}
+      <div className="grid" style={{ 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
+        gap: 'var(--space-8)',
+        marginTop: 'var(--space-8)'
+      }}>
+        {/* Spending Trends Chart */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <SpendingTrends 
+            transactions={transactions} 
+            period={selectedPeriod}
+          />
+        </motion.div>
+        
+        {/* Goal Progress */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <GoalProgress 
+            goals={goals}
+            onGoalUpdate={(updatedGoals) => {
+              setGoals(updatedGoals)
+              localStorage.setItem('finance-ai-goals', JSON.stringify(updatedGoals))
+            }}
+          />
+        </motion.div>
+      </div>
+      
+      {/* Recent Activity & AI Assistant */}
+      <div className="grid" style={{ 
+        gridTemplateColumns: '2fr 1fr',
+        gap: 'var(--space-8)',
+        marginTop: 'var(--space-8)'
+      }}>
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <RecentActivity 
+            transactions={transactions}
+            onTransactionEdit={(transaction) => {
+              // Handle transaction edit
+              console.log('Edit transaction:', transaction)
+            }}
+          />
+        </motion.div>
+        
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.5 }}
+        >
+          <AIAssistant 
+            metrics={metrics}
+            transactions={transactions}
+          />
+        </motion.div>
+      </div>
+      
+      {/* Quick Actions FAB */}
+      <motion.div
+        style={{
+          position: 'fixed',
+          bottom: 'var(--space-8)',
+          right: 'var(--space-8)',
+          zIndex: 100
+        }}
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ delay: 0.6, type: "spring" }}
+      >
+        <motion.button
+          className="btn btn-primary"
+          onClick={() => setShowOnboarding(true)}
+          style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 'var(--font-size-title-2)',
+            boxShadow: 'var(--shadow-large)'
+          }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+        >
+          +
+        </motion.button>
+      </motion.div>
+
+      {/* Enhanced Add Transaction Modal */}
+      <AnimatePresence>
         {showOnboarding && (
-          <div className="modal-overlay">
-            <div className="modal-content">
-              <Onboarding onTransactionsAdded={handleOnboardingComplete} />
+          <motion.div 
+            className="modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div 
+              className="modal-content"
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            >
+              <Onboarding 
+                onTransactionsAdded={(newTransactions) => {
+                  const allTransactions = [...transactions, ...newTransactions]
+                  handleTransactionUpdate(allTransactions)
+                  setShowOnboarding(false)
+                }}
+              />
               <button
                 onClick={() => setShowOnboarding(false)}
                 className="modal-close"
               >
                 ×
               </button>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         )}
-      </div>
-    )
-  }
-
-  // Show dashboard with real user data
-  const totalBalance = transactions.reduce((sum, t) => sum + t.amount, 0)
-  const income = transactions.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0)
-  const expenses = Math.abs(transactions.filter(t => t.amount < 0).reduce((sum, t) => sum + t.amount, 0))
-  const savings = income - expenses
-
-  // Calculate percentage changes based on real data patterns
-  const recentTransactions = transactions.slice(-10)
-  const olderTransactions = transactions.slice(0, -10)
-  
-  const recentBalance = recentTransactions.reduce((sum, t) => sum + t.amount, 0)
-  const olderBalance = olderTransactions.reduce((sum, t) => sum + t.amount, 0)
-  
-  const balanceChange = olderBalance !== 0 ? ((recentBalance - olderBalance) / Math.abs(olderBalance)) * 100 : 5.2
-  const incomeChange = income > 0 ? 12.0 : 0
-  const expenseChange = expenses > 0 ? -8.0 : 0
-  const savingsChange = savings >= 0 ? 15.0 : -10.0
-
-  return (
-    <div className="fade-in">
-      {/* Page Header */}
-      <div className="page-header">
-        <h1 className="page-title">Dashboard</h1>
-        <p className="page-subtitle">Your financial overview</p>
-      </div>
-      
-      {/* Stats Grid */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-header">
-            <div className="stat-icon blue">$</div>
-            <div className={`stat-badge ${balanceChange >= 0 ? 'positive' : 'negative'}`}>
-              {balanceChange >= 0 ? '+' : ''}{balanceChange.toFixed(1)}%
-            </div>
-          </div>
-          <div className="stat-label">Total Balance</div>
-          <div className="stat-value">${totalBalance.toLocaleString()}</div>
-        </div>
-        
-        <div className="stat-card">
-          <div className="stat-header">
-            <div className="stat-icon green">↗</div>
-            <div className="stat-badge positive">
-              +{incomeChange.toFixed(0)}%
-            </div>
-          </div>
-          <div className="stat-label">Income</div>
-          <div className="stat-value">${income.toLocaleString()}</div>
-        </div>
-        
-        <div className="stat-card">
-          <div className="stat-header">
-            <div className="stat-icon red">↙</div>
-            <div className="stat-badge negative">
-              {expenseChange.toFixed(0)}%
-            </div>
-          </div>
-          <div className="stat-label">Expenses</div>
-          <div className="stat-value">${expenses.toLocaleString()}</div>
-        </div>
-        
-        <div className="stat-card">
-          <div className="stat-header">
-            <div className="stat-icon purple">◆</div>
-            <div className={`stat-badge ${savingsChange >= 0 ? 'positive' : 'negative'}`}>
-              {savingsChange >= 0 ? '+' : ''}{savingsChange.toFixed(0)}%
-            </div>
-          </div>
-          <div className="stat-label">Net Savings</div>
-          <div className="stat-value">${savings.toLocaleString()}</div>
-        </div>
-      </div>
-      
-      {/* Recent Activity */}
-      <div className="content-card slide-up">
-        <div className="content-card-header">
-          <h3 className="content-card-title">Recent Activity</h3>
-          <p className="content-card-subtitle">Your latest transactions</p>
-        </div>
-        <div className="content-card-body">
-          <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
-            {transactions.slice(-5).reverse().map((transaction, index) => (
-              <div key={index} style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: 'var(--space-6)',
-                background: 'var(--color-surface-elevated)',
-                borderRadius: 'var(--radius-large)',
-                border: '1px solid var(--color-border)',
-                transition: 'all 0.3s var(--ease-in-out)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
-                  <div style={{
-                    width: '48px',
-                    height: '48px',
-                    backgroundColor: transaction.amount > 0 ? 'rgba(48, 209, 88, 0.15)' : 'var(--color-surface)',
-                    borderRadius: 'var(--radius-medium)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 'var(--font-size-body)',
-                    color: transaction.amount > 0 ? 'var(--color-green)' : 'var(--color-text-primary)',
-                    border: transaction.amount > 0 ? '1px solid rgba(48, 209, 88, 0.2)' : '1px solid var(--color-border)'
-                  }}>
-                    {transaction.amount > 0 ? '↗' : '↙'}
-                  </div>
-                  <div>
-                    <div className="text-headline" style={{ marginBottom: 'var(--space-1)' }}>
-                      {transaction.name}
-                    </div>
-                    <div className="text-caption-1">
-                      {transaction.category} • {new Date(transaction.date).toLocaleDateString()}
-                    </div>
-                  </div>
-                </div>
-                <div style={{
-                  color: transaction.amount > 0 ? 'var(--color-green)' : 'var(--color-text-primary)',
-                  fontWeight: '700',
-                  fontSize: 'var(--font-size-body)'
-                }}>
-                  {transaction.amount > 0 ? '+' : ''}${Math.abs(transaction.amount).toFixed(2)}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-      
-      {/* Quick Actions */}
-      <div className="grid grid-3" style={{ marginTop: 'var(--space-12)' }}>
-        <button 
-          className="btn btn-primary btn-large"
-          onClick={() => setShowOnboarding(true)}
-        >
-          Add Transaction
-        </button>
-        <button 
-          className="btn btn-secondary btn-large"
-          onClick={() => window.location.href = '/dashboard/analytics'}
-        >
-          View Analytics
-        </button>
-        <button 
-          className="btn btn-secondary btn-large"
-          onClick={() => window.location.href = '/dashboard/insights'}
-        >
-          AI Insights
-        </button>
-      </div>
-
-      {/* Show Add Transaction Modal */}
-      {showOnboarding && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <Onboarding onTransactionsAdded={(newTransactions) => {
-              // Merge new transactions with existing ones
-              const allTransactions = [...transactions, ...newTransactions]
-              setTransactions(allTransactions)
-              localStorage.setItem('finance-ai-transactions', JSON.stringify(allTransactions))
-              setShowOnboarding(false)
-            }} />
-            <button
-              onClick={() => setShowOnboarding(false)}
-              className="modal-close"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+      </AnimatePresence>
+    </motion.div>
   )
 }

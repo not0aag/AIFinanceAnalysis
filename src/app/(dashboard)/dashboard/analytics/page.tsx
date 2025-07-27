@@ -1,26 +1,41 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-
-interface Transaction {
-  id: number
-  name: string
-  amount: number
-  category: string
-  date: string
-}
+import { useState, useEffect, useMemo } from 'react'
+import { motion } from 'framer-motion'
+import { Transaction, SpendingPattern } from '@/types/finance'
+import { 
+  calculateSpendingPatterns, 
+  generateFinancialReport,
+  predictFutureSpending 
+} from '@/lib/analytics'
+import CategoryBreakdown from '@/components/analytics/CategoryBreakdown'
+import TrendAnalysis from '@/components/analytics/TrendAnalysis'
+import MerchantInsights from '@/components/analytics/MerchantInsights'
+import PredictiveAnalytics from '@/components/analytics/PredictiveAnalytics'
+import ExportReport from '@/components/analytics/ExportReport'
 
 export default function AnalyticsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'quarter' | 'year'>('month')
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [showExport, setShowExport] = useState(false)
 
   useEffect(() => {
-    // Load transactions from localStorage
     const loadTransactions = () => {
       const savedTransactions = localStorage.getItem('finance-ai-transactions')
       
       if (savedTransactions) {
-        setTransactions(JSON.parse(savedTransactions))
+        const parsed = JSON.parse(savedTransactions)
+        const typedTransactions: Transaction[] = parsed.map((t: any) => ({
+          ...t,
+          id: t.id?.toString() || Date.now().toString(),
+          userId: 'user-1',
+          type: t.amount > 0 ? 'income' : 'expense',
+          createdAt: t.createdAt || t.date,
+          updatedAt: t.updatedAt || t.date
+        }))
+        setTransactions(typedTransactions)
       }
       
       setIsLoading(false)
@@ -29,44 +44,69 @@ export default function AnalyticsPage() {
     loadTransactions()
   }, [])
 
+  // Calculate analytics data
+  const analyticsData = useMemo(() => {
+    if (transactions.length === 0) return null
+    
+    return {
+      patterns: calculateSpendingPatterns(transactions, selectedPeriod),
+      report: generateFinancialReport(transactions, selectedPeriod),
+      predictions: predictFutureSpending(transactions)
+    }
+  }, [transactions, selectedPeriod])
+
   if (isLoading) {
     return (
       <div className="loading">
         <div className="loading-spinner"></div>
-        <div className="text-body">Loading your analytics...</div>
+        <div className="text-body">Analyzing your financial data...</div>
       </div>
     )
   }
 
   if (transactions.length === 0) {
     return (
-      <div className="fade-in">
-        {/* Page Header */}
+      <motion.div 
+        className="fade-in"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+      >
+        {/* Empty State */}
         <div className="page-header">
-          <h1 className="page-title">Analytics</h1>
-          <p className="page-subtitle">Analyze your spending patterns and financial trends</p>
+          <h1 className="page-title">Analytics Dashboard</h1>
+          <p className="page-subtitle">Deep insights into your financial patterns</p>
         </div>
 
-        {/* Empty State */}
         <div className="content-card">
           <div className="content-card-body" style={{ textAlign: 'center', padding: 'var(--space-16)' }}>
-            <div style={{
-              width: '80px',
-              height: '80px',
-              background: 'linear-gradient(135deg, var(--color-blue) 0%, var(--color-blue-dark) 100%)',
-              borderRadius: 'var(--radius-large)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto var(--space-8) auto',
-              fontSize: 'var(--font-size-title-2)',
-              color: 'white',
-              boxShadow: 'var(--shadow-medium)'
-            }}>
+            <motion.div
+              style={{
+                width: '120px',
+                height: '120px',
+                background: 'linear-gradient(135deg, var(--color-blue) 0%, var(--color-blue-dark) 100%)',
+                borderRadius: 'var(--radius-large)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto var(--space-8) auto',
+                fontSize: '60px',
+                color: 'white',
+                boxShadow: 'var(--shadow-large)'
+              }}
+              animate={{ 
+                rotate: [0, 10, -10, 0],
+                scale: [1, 1.05, 1]
+              }}
+              transition={{ 
+                duration: 3,
+                repeat: Infinity,
+                repeatDelay: 1
+              }}
+            >
               📊
-            </div>
+            </motion.div>
             <h2 className="text-title-2" style={{ marginBottom: 'var(--space-4)' }}>
-              Analytics Awaiting Data
+              No Data to Analyze Yet
             </h2>
             <p className="text-body" style={{ 
               color: 'var(--color-text-secondary)',
@@ -74,229 +114,231 @@ export default function AnalyticsPage() {
               maxWidth: '500px',
               margin: '0 auto var(--space-8) auto'
             }}>
-              Add some transactions to see detailed analytics about your spending patterns, 
-              category breakdowns, and financial trends.
+              Add transactions to unlock powerful analytics including spending patterns, 
+              trend analysis, and AI-powered predictions.
             </p>
             <button
               className="btn btn-primary btn-large"
               onClick={() => window.location.href = '/dashboard'}
             >
-              Add Transactions
+              Add Your First Transaction
             </button>
           </div>
         </div>
-      </div>
+      </motion.div>
     )
   }
 
-  // Process real transaction data
-  const expenses = transactions.filter(t => t.amount < 0)
-  const income = transactions.filter(t => t.amount > 0)
-  
-  // Calculate category breakdown
-  const categoryTotals: Record<string, number> = {}
-  expenses.forEach(transaction => {
-    const category = transaction.category || 'Other'
-    categoryTotals[category] = (categoryTotals[category] || 0) + Math.abs(transaction.amount)
-  })
-
-  const total = Object.values(categoryTotals).reduce((sum, amount) => sum + amount, 0)
-
-  // Convert to spending data with colors
-  const spendingData = Object.entries(categoryTotals).map(([category, amount], index) => {
-    const colors = ['#ef4444', '#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', '#6b7280', '#ec4899', '#14b8a6']
-    return {
-      category,
-      amount,
-      percentage: total > 0 ? Math.round((amount / total) * 100) : 0,
-      color: colors[index % colors.length]
-    }
-  }).sort((a, b) => b.amount - a.amount)
-
-  // Get top category
-  const topCategory = spendingData[0]
-
-  // Calculate monthly data (simplified - group by month)
-  const monthlyData: Record<string, number> = {}
-  transactions.forEach(transaction => {
-    const date = new Date(transaction.date)
-    const monthKey = `${date.getFullYear()}-${date.getMonth()}`
-    const monthName = date.toLocaleDateString('en-US', { month: 'short' })
-    
-    if (transaction.amount < 0) {
-      if (!monthlyData[monthName]) {
-        monthlyData[monthName] = 0
-      }
-      monthlyData[monthName] += Math.abs(transaction.amount)
-    }
-  })
-
-  const monthlyChartData = Object.entries(monthlyData).map(([month, amount]) => ({
-    month,
-    amount
-  })).slice(-6) // Last 6 months
-
-  // Calculate stats
-  const totalExpenses = expenses.reduce((sum, t) => sum + Math.abs(t.amount), 0)
-  const totalIncome = income.reduce((sum, t) => sum + t.amount, 0)
-  const savingsRate = totalIncome > 0 ? Math.round(((totalIncome - totalExpenses) / totalIncome) * 100) : 0
+  if (!analyticsData) return null
 
   return (
-    <div className="fade-in">
-      <div style={{ marginBottom: '2rem' }}>
-        <h1>Analytics</h1>
-        <p style={{ color: '#94a3b8' }}>Analyze your spending patterns and financial trends</p>
-      </div>
-      
-      {/* Summary Cards */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-label">Total Spending</div>
-          <div className="stat-value">${total.toLocaleString()}</div>
-          <div className="stat-change positive">Based on {expenses.length} transactions</div>
-        </div>
-        
-        <div className="stat-card">
-          <div className="stat-label">Top Category</div>
-          <div className="stat-value">{topCategory?.category || 'N/A'}</div>
-          <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginTop: '0.5rem' }}>
-            {topCategory?.percentage || 0}% of total spending
+    <motion.div 
+      className="fade-in"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+    >
+      {/* Enhanced Header with Controls */}
+      <div className="page-header" style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'flex-start',
+        flexWrap: 'wrap',
+        gap: 'var(--space-4)',
+        marginBottom: 'var(--space-12)'
+      }}>
+        <div>
+          <h1 className="page-title">Analytics Dashboard</h1>
+          <p className="page-subtitle">
+            {analyticsData.report.period.start} - {analyticsData.report.period.end}
           </p>
         </div>
         
-        <div className="stat-card">
-          <div className="stat-label">Savings Rate</div>
-          <div className="stat-value">{savingsRate}%</div>
-          <div className={`stat-change ${savingsRate >= 20 ? 'positive' : 'negative'}`}>
-            {savingsRate >= 20 ? 'Great job!' : 'Room for improvement'}
-          </div>
+        <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'center' }}>
+          {/* Period Selector */}
+          <select
+            className="input"
+            value={selectedPeriod}
+            onChange={(e) => setSelectedPeriod(e.target.value as any)}
+            style={{ 
+              minWidth: '150px',
+              padding: 'var(--space-2) var(--space-4)'
+            }}
+          >
+            <option value="week">Past Week</option>
+            <option value="month">Past Month</option>
+            <option value="quarter">Past Quarter</option>
+            <option value="year">Past Year</option>
+          </select>
+          
+          {/* Export Button */}
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowExport(true)}
+            style={{ 
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--space-2)'
+            }}
+          >
+            <span>📥</span>
+            Export Report
+          </button>
         </div>
       </div>
-      
-      {/* Charts */}
-      {spendingData.length > 0 && (
-        <div className="stat-card">
-          <h3 style={{ marginBottom: '1.5rem' }}>Spending by Category</h3>
-          
-          {/* Chart Container */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '2rem', alignItems: 'start' }}>
-            
-            {/* Pie Chart (CSS-based) */}
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-              <div style={{
-                width: '250px',
-                height: '250px',
-                borderRadius: '50%',
-                background: spendingData.length > 1 ? `conic-gradient(
-                  ${spendingData.map((item, index) => {
-                    const startAngle = spendingData.slice(0, index).reduce((sum, prev) => sum + prev.percentage, 0) * 3.6
-                    const endAngle = startAngle + (item.percentage * 3.6)
-                    return `${item.color} ${startAngle}deg ${endAngle}deg`
-                  }).join(', ')}
-                )` : spendingData[0]?.color || '#3b82f6',
-                position: 'relative',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
-              }}>
-                {/* Center circle */}
-                <div style={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  width: '120px',
-                  height: '120px',
-                  backgroundColor: '#1e293b',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: '2px solid #334155'
-                }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white' }}>
-                    ${total.toLocaleString()}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                    Total Spent
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Legend */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {spendingData.map((item, index) => (
-                <div key={index} style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '0.75rem',
-                  backgroundColor: '#374151',
-                  borderRadius: '0.5rem',
-                  border: '1px solid #4b5563'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{
-                      width: '16px',
-                      height: '16px',
-                      backgroundColor: item.color,
-                      borderRadius: '2px'
-                    }} />
-                    <span style={{ color: 'white', fontWeight: '500' }}>{item.category}</span>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ color: 'white', fontWeight: '600' }}>
-                      ${item.amount.toLocaleString()}
-                    </div>
-                    <div style={{ color: '#94a3b8', fontSize: '0.875rem' }}>
-                      {item.percentage}%
-                    </div>
-                  </div>
-                </div>
-              ))}
+
+      {/* Key Metrics Summary */}
+      <div className="stats-grid" style={{ marginBottom: 'var(--space-12)' }}>
+        <motion.div 
+          className="stat-card"
+          whileHover={{ scale: 1.02 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <div className="stat-header">
+            <div className="stat-icon green">📈</div>
+            <div className={`stat-badge ${analyticsData.report.income.growth >= 0 ? 'positive' : 'negative'}`}>
+              {analyticsData.report.income.growth >= 0 ? '+' : ''}{analyticsData.report.income.growth.toFixed(1)}%
             </div>
           </div>
-          
-          {/* Bar Chart - Only show if we have monthly data */}
-          {monthlyChartData.length > 0 && (
-            <div style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '1px solid #374151' }}>
-              <h4 style={{ marginBottom: '1rem' }}>Monthly Spending Trend</h4>
-              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${monthlyChartData.length}, 1fr)`, gap: '0.5rem', alignItems: 'end', height: '200px' }}>
-                {monthlyChartData.map((data, index) => {
-                  const maxAmount = Math.max(...monthlyChartData.map(d => d.amount))
-                  const height = maxAmount > 0 ? (data.amount / maxAmount) * 160 : 10
-                  
-                  return (
-                    <div key={index} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                      <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                        ${(data.amount / 1000).toFixed(1)}k
-                      </div>
-                      <div style={{
-                        width: '100%',
-                        height: `${height}px`,
-                        backgroundColor: '#3b82f6',
-                        borderRadius: '4px 4px 0 0',
-                        transition: 'all 0.3s ease',
-                        cursor: 'pointer'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#2563eb'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#3b82f6'
-                      }}
-                      />
-                      <div style={{ fontSize: '0.875rem', color: '#94a3b8' }}>
-                        {data.month}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+          <div className="stat-label">Total Income</div>
+          <div className="stat-value">${analyticsData.report.income.total.toLocaleString()}</div>
+          <div className="stat-change positive">
+            vs previous {selectedPeriod}
+          </div>
+        </motion.div>
+
+        <motion.div 
+          className="stat-card"
+          whileHover={{ scale: 1.02 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <div className="stat-header">
+            <div className="stat-icon red">📉</div>
+            <div className="stat-badge negative">
+              {((analyticsData.report.expenses.total / analyticsData.report.income.total) * 100).toFixed(0)}%
             </div>
-          )}
-        </div>
+          </div>
+          <div className="stat-label">Total Expenses</div>
+          <div className="stat-value">${analyticsData.report.expenses.total.toLocaleString()}</div>
+          <div className="stat-change">
+            of total income
+          </div>
+        </motion.div>
+
+        <motion.div 
+          className="stat-card"
+          whileHover={{ scale: 1.02 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <div className="stat-header">
+            <div className="stat-icon blue">💰</div>
+            <div className={`stat-badge ${analyticsData.report.savings.rate >= 20 ? 'positive' : 'negative'}`}>
+              {analyticsData.report.savings.rate.toFixed(0)}%
+            </div>
+          </div>
+          <div className="stat-label">Savings Rate</div>
+          <div className="stat-value">${analyticsData.report.savings.amount.toLocaleString()}</div>
+          <div className="stat-change">
+            {analyticsData.report.savings.rate >= 20 ? 'Excellent!' : 'Room to improve'}
+          </div>
+        </motion.div>
+
+        <motion.div 
+          className="stat-card"
+          whileHover={{ scale: 1.02 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <div className="stat-header">
+            <div className="stat-icon purple">🎯</div>
+            <div className="stat-badge positive">
+              {analyticsData.predictions.accuracy.toFixed(0)}%
+            </div>
+          </div>
+          <div className="stat-label">Prediction Accuracy</div>
+          <div className="stat-value">${analyticsData.predictions.nextMonth.toLocaleString()}</div>
+          <div className="stat-change">
+            projected next month
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Main Analytics Content */}
+      <div className="grid" style={{ 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+        gap: 'var(--space-8)'
+      }}>
+        {/* Category Breakdown */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.5 }}
+        >
+          <CategoryBreakdown
+            data={analyticsData.report.expenses.byCategory}
+            total={analyticsData.report.expenses.total}
+            onCategorySelect={setSelectedCategory}
+            selectedCategory={selectedCategory}
+          />
+        </motion.div>
+
+        {/* Trend Analysis */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.6 }}
+        >
+          <TrendAnalysis
+            patterns={analyticsData.patterns}
+            selectedCategory={selectedCategory}
+          />
+        </motion.div>
+      </div>
+
+      {/* Additional Insights Row */}
+      <div className="grid" style={{ 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
+        gap: 'var(--space-8)',
+        marginTop: 'var(--space-8)'
+      }}>
+        {/* Merchant Insights */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+        >
+          <MerchantInsights
+            merchants={analyticsData.report.expenses.topMerchants}
+            transactions={transactions}
+          />
+        </motion.div>
+
+        {/* Predictive Analytics */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+        >
+          <PredictiveAnalytics
+            predictions={analyticsData.predictions}
+            patterns={analyticsData.patterns}
+          />
+        </motion.div>
+      </div>
+
+      {/* Export Modal */}
+      {showExport && (
+        <ExportReport
+          report={analyticsData.report}
+          onClose={() => setShowExport(false)}
+        />
       )}
-    </div>
+    </motion.div>
   )
 }

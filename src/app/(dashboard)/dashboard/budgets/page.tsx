@@ -1,118 +1,55 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-
-interface Transaction {
-  id: number
-  name: string
-  amount: number
-  category: string
-  date: string
-}
-
-interface Budget {
-  id: number
-  category: string
-  allocated: number
-  spent: number
-}
+import { useState, useEffect, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Transaction, Budget } from '@/types/finance'
+import BudgetOverview from '@/components/budgets/BudgetOverview'
+import BudgetCreator from '@/components/budgets/BudgetCreator'
+import BudgetCard from '@/components/budgets/BudgetCard'
+import BudgetAnalytics from '@/components/budgets/BudgetAnalytics'
+import BudgetRecommendations from '@/components/budgets/BudgetRecommendations'
 
 export default function BudgetsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [budgets, setBudgets] = useState<Budget[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [showAddForm, setShowAddForm] = useState(false)
+  const [showCreator, setShowCreator] = useState(false)
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null)
-  const [newBudget, setNewBudget] = useState({
-    category: 'Food & Dining',
-    allocated: ''
-  })
-
-  // Comprehensive expense categories for budgets (only expenses need budgets)
-  const availableCategories = [
-    'Food & Dining',
-    'Groceries', 
-    'Restaurants',
-    'Coffee & Snacks',
-    'Transportation',
-    'Gas & Fuel',
-    'Public Transit',
-    'Uber & Lyft',
-    'Parking',
-    'Car Maintenance',
-    'Housing',
-    'Rent',
-    'Mortgage',
-    'Property Tax',
-    'Home Insurance',
-    'Utilities',
-    'Electricity',
-    'Water',
-    'Internet',
-    'Phone',
-    'Gas Bill',
-    'Entertainment',
-    'Movies',
-    'Streaming Services',
-    'Games',
-    'Books',
-    'Music',
-    'Shopping',
-    'Clothing',
-    'Electronics',
-    'Home & Garden',
-    'Personal Care',
-    'Gifts',
-    'Healthcare',
-    'Doctor Visits',
-    'Pharmacy',
-    'Dental',
-    'Vision',
-    'Health Insurance',
-    'Fitness',
-    'Gym Membership',
-    'Sports',
-    'Education',
-    'Tuition',
-    'Books & Supplies',
-    'Online Courses',
-    'Professional',
-    'Business Expenses',
-    'Office Supplies',
-    'Software',
-    'Professional Services',
-    'Financial',
-    'Bank Fees',
-    'Credit Card Fees',
-    'Investment Fees',
-    'Insurance',
-    'Travel',
-    'Flights',
-    'Hotels',
-    'Vacation',
-    'Travel Insurance',
-    'Family',
-    'Childcare',
-    'Pet Care',
-    'Miscellaneous',
-    'Cash Withdrawal',
-    'Donations',
-    'Taxes',
-    'Other'
-  ]
+  const [selectedPeriod, setSelectedPeriod] = useState<'weekly' | 'monthly' | 'yearly'>('monthly')
+  const [view, setView] = useState<'grid' | 'list'>('grid')
 
   useEffect(() => {
-    // Load data from localStorage
     const loadData = () => {
+      // Load transactions
       const savedTransactions = localStorage.getItem('finance-ai-transactions')
-      const savedBudgets = localStorage.getItem('finance-ai-budgets')
-      
       if (savedTransactions) {
-        setTransactions(JSON.parse(savedTransactions))
+        const parsed = JSON.parse(savedTransactions)
+        const typedTransactions: Transaction[] = parsed.map((t: any) => ({
+          ...t,
+          id: t.id?.toString() || Date.now().toString(),
+          userId: 'user-1',
+          type: t.amount > 0 ? 'income' : 'expense',
+          createdAt: t.createdAt || t.date,
+          updatedAt: t.updatedAt || t.date
+        }))
+        setTransactions(typedTransactions)
       }
       
+      // Load budgets with enhanced structure
+      const savedBudgets = localStorage.getItem('finance-ai-budgets')
       if (savedBudgets) {
-        setBudgets(JSON.parse(savedBudgets))
+        const parsedBudgets = JSON.parse(savedBudgets)
+        const enhancedBudgets: Budget[] = parsedBudgets.map((b: any) => ({
+          ...b,
+          id: b.id?.toString() || Date.now().toString(),
+          userId: 'user-1',
+          period: b.period || 'monthly',
+          startDate: b.startDate || new Date().toISOString(),
+          endDate: b.endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          notifications: b.notifications || { enabled: true, threshold: 80 },
+          rollover: b.rollover || false
+        }))
+        setBudgets(enhancedBudgets)
       }
       
       setIsLoading(false)
@@ -121,89 +58,53 @@ export default function BudgetsPage() {
     loadData()
   }, [])
 
-  // Calculate spending for each budget
-  const calculateBudgetSpending = () => {
+  // Calculate budget spending with period consideration
+  const budgetsWithSpending = useMemo(() => {
     return budgets.map(budget => {
-      const categoryExpenses = transactions
-        .filter(t => t.amount < 0 && t.category === budget.category)
-        .reduce((sum, t) => sum + Math.abs(t.amount), 0)
+      const relevantTransactions = transactions.filter(t => {
+        if (t.type !== 'expense' || t.category !== budget.category) return false
+        
+        const transactionDate = new Date(t.date)
+        const startDate = new Date(budget.startDate)
+        const endDate = new Date(budget.endDate)
+        
+        return transactionDate >= startDate && transactionDate <= endDate
+      })
       
-      return {
-        ...budget,
-        spent: categoryExpenses
-      }
+      const spent = relevantTransactions.reduce((sum, t) => sum + Math.abs(t.amount), 0)
+      
+      return { ...budget, spent }
     })
-  }
+  }, [budgets, transactions])
 
-  const budgetsWithSpending = calculateBudgetSpending()
-
-  const handleAddBudget = (e: React.FormEvent) => {
-    e.preventDefault()
+  // Budget management functions
+  const handleCreateBudget = (newBudget: Omit<Budget, 'id' | 'userId' | 'spent'>) => {
+    const budget: Budget = {
+      ...newBudget,
+      id: Date.now().toString(),
+      userId: 'user-1',
+      spent: 0
+    }
     
-    if (newBudget.category && newBudget.allocated) {
-      // Check if budget for this category already exists
-      const existingBudget = budgets.find(b => b.category === newBudget.category)
-      if (existingBudget) {
-        alert('Budget for this category already exists. Edit the existing one instead.')
-        return
-      }
-
-      const budget: Budget = {
-        id: Date.now(),
-        category: newBudget.category,
-        allocated: parseFloat(newBudget.allocated),
-        spent: 0
-      }
-      
-      const updatedBudgets = [...budgets, budget]
-      setBudgets(updatedBudgets)
-      localStorage.setItem('finance-ai-budgets', JSON.stringify(updatedBudgets))
-      
-      setNewBudget({ category: 'Food & Dining', allocated: '' })
-      setShowAddForm(false)
-    }
+    const updated = [...budgets, budget]
+    setBudgets(updated)
+    localStorage.setItem('finance-ai-budgets', JSON.stringify(updated))
+    setShowCreator(false)
   }
 
-  const handleEditBudget = (budget: Budget) => {
-    setEditingBudget(budget)
-    setNewBudget({
-      category: budget.category,
-      allocated: budget.allocated.toString()
-    })
-    setShowAddForm(true)
-  }
-
-  const handleUpdateBudget = (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (editingBudget && newBudget.allocated) {
-      const updatedBudgets = budgets.map(b => 
-        b.id === editingBudget.id 
-          ? { ...b, allocated: parseFloat(newBudget.allocated) }
-          : b
-      )
-      
-      setBudgets(updatedBudgets)
-      localStorage.setItem('finance-ai-budgets', JSON.stringify(updatedBudgets))
-      
-      setEditingBudget(null)
-      setNewBudget({ category: 'Food & Dining', allocated: '' })
-      setShowAddForm(false)
-    }
-  }
-
-  const handleDeleteBudget = (id: number) => {
-    if (confirm('Are you sure you want to delete this budget?')) {
-      const updatedBudgets = budgets.filter(b => b.id !== id)
-      setBudgets(updatedBudgets)
-      localStorage.setItem('finance-ai-budgets', JSON.stringify(updatedBudgets))
-    }
-  }
-
-  const cancelEdit = () => {
+  const handleUpdateBudget = (updatedBudget: Budget) => {
+    const updated = budgets.map(b => b.id === updatedBudget.id ? updatedBudget : b)
+    setBudgets(updated)
+    localStorage.setItem('finance-ai-budgets', JSON.stringify(updated))
     setEditingBudget(null)
-    setNewBudget({ category: 'Food & Dining', allocated: '' })
-    setShowAddForm(false)
+  }
+
+  const handleDeleteBudget = (budgetId: string) => {
+    if (confirm('Are you sure you want to delete this budget?')) {
+      const updated = budgets.filter(b => b.id !== budgetId)
+      setBudgets(updated)
+      localStorage.setItem('finance-ai-budgets', JSON.stringify(updated))
+    }
   }
 
   if (isLoading) {
@@ -215,326 +116,212 @@ export default function BudgetsPage() {
     )
   }
 
-  const totalBudgeted = budgetsWithSpending.reduce((sum, budget) => sum + budget.allocated, 0)
-  const totalSpent = budgetsWithSpending.reduce((sum, budget) => sum + budget.spent, 0)
-  const remaining = totalBudgeted - totalSpent
-
   return (
-    <div className="fade-in">
-      <div style={{ marginBottom: '2rem' }}>
-        <h1>Budgets</h1>
-        <p style={{ color: '#94a3b8' }}>Set and track your spending limits</p>
-      </div>
-      
-      {/* Add Budget Button */}
-      <div style={{ marginBottom: '2rem' }}>
-        <button 
-          onClick={() => setShowAddForm(!showAddForm)}
-          style={{
-            backgroundColor: showAddForm ? '#ef4444' : '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '0.5rem',
-            padding: '0.75rem 1.5rem',
-            fontWeight: '500',
-            cursor: 'pointer',
-            transition: 'background-color 0.2s ease'
-          }}
-        >
-          {showAddForm ? '✕ Cancel' : '+ Add Budget'}
-        </button>
-      </div>
-
-      {/* Add/Edit Budget Form */}
-      {showAddForm && (
-        <div className="stat-card" style={{ marginBottom: '2rem' }}>
-          <h3 style={{ marginBottom: '1rem' }}>
-            {editingBudget ? 'Edit Budget' : 'Add New Budget'}
-          </h3>
-          <form onSubmit={editingBudget ? handleUpdateBudget : handleAddBudget} style={{ display: 'grid', gap: '1rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '0.875rem',
-                  fontWeight: '500',
-                  marginBottom: '0.5rem',
-                  color: '#94a3b8'
-                }}>
-                  Category
-                </label>
-                <select
-                  value={newBudget.category}
-                  onChange={(e) => setNewBudget({ ...newBudget, category: e.target.value })}
-                  disabled={!!editingBudget} // Disable category editing
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    backgroundColor: editingBudget ? '#2d3748' : '#374151',
-                    border: '1px solid #4b5563',
-                    borderRadius: '0.5rem',
-                    color: editingBudget ? '#94a3b8' : 'white',
-                    fontSize: '0.875rem',
-                    cursor: editingBudget ? 'not-allowed' : 'pointer'
-                  }}
-                >
-                  {availableCategories.map(category => (
-                    <option key={category} value={category}>{category}</option>
-                  ))}
-                </select>
-                {editingBudget && (
-                  <p style={{ 
-                    fontSize: '0.75rem', 
-                    color: '#6b7280', 
-                    marginTop: '0.25rem',
-                    fontStyle: 'italic'
-                  }}>
-                    Category cannot be changed when editing
-                  </p>
-                )}
-                {!editingBudget && (
-                  <p style={{ 
-                    fontSize: '0.75rem', 
-                    color: '#6b7280', 
-                    marginTop: '0.25rem',
-                    fontStyle: 'italic'
-                  }}>
-                    Choose from {availableCategories.length} expense categories
-                  </p>
-                )}
-              </div>
-              
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '0.875rem',
-                  fontWeight: '500',
-                  marginBottom: '0.5rem',
-                  color: '#94a3b8'
-                }}>
-                  Monthly Budget ($)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={newBudget.allocated}
-                  onChange={(e) => setNewBudget({ ...newBudget, allocated: e.target.value })}
-                  placeholder="0.00"
-                  required
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    backgroundColor: '#374151',
-                    border: '1px solid #4b5563',
-                    borderRadius: '0.5rem',
-                    color: 'white',
-                    fontSize: '0.875rem'
-                  }}
-                />
-                <p style={{ 
-                  fontSize: '0.75rem', 
-                  color: '#6b7280', 
-                  marginTop: '0.25rem',
-                  fontStyle: 'italic'
-                }}>
-                  Set your monthly spending limit for this category
-                </p>
-              </div>
-            </div>
-            
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button
-                type="submit"
-                style={{
-                  backgroundColor: '#10b981',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '0.5rem',
-                  padding: '0.75rem 1.5rem',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  flex: 1
-                }}
-              >
-                {editingBudget ? 'Update Budget' : 'Add Budget'}
-              </button>
-              {editingBudget && (
-                <button
-                  type="button"
-                  onClick={cancelEdit}
-                  style={{
-                    backgroundColor: '#6b7280',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '0.5rem',
-                    padding: '0.75rem 1.5rem',
-                    fontWeight: '500',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-              )}
-            </div>
-          </form>
+    <motion.div 
+      className="fade-in"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+    >
+      {/* Enhanced Header */}
+      <div className="page-header" style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'flex-start',
+        flexWrap: 'wrap',
+        gap: 'var(--space-4)',
+        marginBottom: 'var(--space-8)'
+      }}>
+        <div>
+          <h1 className="page-title">Budget Management</h1>
+          <p className="page-subtitle">
+            Track spending limits and achieve your financial goals
+          </p>
         </div>
-      )}
-      
-      {/* Budget Overview */}
-      {budgetsWithSpending.length > 0 && (
-        <div className="stats-grid" style={{ marginBottom: '2rem' }}>
-          <div className="stat-card">
-            <div className="stat-label">Total Budgeted</div>
-            <div className="stat-value">${totalBudgeted.toLocaleString()}</div>
-            <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginTop: '0.5rem' }}>
-              Across {budgetsWithSpending.length} categor{budgetsWithSpending.length === 1 ? 'y' : 'ies'}
-            </p>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Total Spent</div>
-            <div className="stat-value">${totalSpent.toLocaleString()}</div>
-            <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginTop: '0.5rem' }}>
-              {totalBudgeted > 0 ? `${Math.round((totalSpent / totalBudgeted) * 100)}% of budget used` : 'No budget set'}
-            </p>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Remaining</div>
-            <div className="stat-value" style={{ color: remaining >= 0 ? '#10b981' : '#ef4444' }}>
-              ${remaining.toLocaleString()}
-            </div>
-            <p style={{ 
-              color: remaining >= 0 ? '#10b981' : '#ef4444', 
-              fontSize: '0.875rem', 
-              marginTop: '0.5rem',
-              fontWeight: '500'
-            }}>
-              {remaining >= 0 ? 'Under budget' : 'Over budget'}
-            </p>
-          </div>
-        </div>
-      )}
-      
-      {/* Budget List */}
-      {budgetsWithSpending.length > 0 ? (
-        <div style={{ display: 'grid', gap: '1rem' }}>
-          {budgetsWithSpending.map((budget, index) => {
-            const percentage = budget.allocated > 0 ? (budget.spent / budget.allocated) * 100 : 0
-            const isOverBudget = percentage > 100
-            
-            return (
-              <div key={budget.id} className="stat-card">
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: '1rem'
-                }}>
-                  <div>
-                    <h3 style={{ marginBottom: '0.25rem' }}>{budget.category}</h3>
-                    <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>Monthly Budget</p>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ textAlign: 'right' }}>
-                      <p style={{ fontWeight: '600' }}>
-                        ${budget.spent.toLocaleString()} / ${budget.allocated.toLocaleString()}
-                      </p>
-                      <p style={{
-                        fontSize: '0.875rem',
-                        color: isOverBudget ? '#ef4444' : '#94a3b8'
-                      }}>
-                        {percentage.toFixed(0)}% used
-                      </p>
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button
-                        onClick={() => handleEditBudget(budget)}
-                        style={{
-                          backgroundColor: 'transparent',
-                          color: '#3b82f6',
-                          border: 'none',
-                          cursor: 'pointer',
-                          padding: '0.25rem',
-                          fontSize: '0.875rem',
-                          borderRadius: '0.25rem'
-                        }}
-                        title="Edit budget"
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        onClick={() => handleDeleteBudget(budget.id)}
-                        style={{
-                          backgroundColor: 'transparent',
-                          color: '#ef4444',
-                          border: 'none',
-                          cursor: 'pointer',
-                          padding: '0.25rem',
-                          fontSize: '0.875rem'
-                        }}
-                        title="Delete budget"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Progress Bar */}
-                <div style={{
-                  width: '100%',
-                  height: '8px',
-                  backgroundColor: '#374151',
-                  borderRadius: '4px',
-                  overflow: 'hidden'
-                }}>
-                  <div style={{
-                    width: `${Math.min(percentage, 100)}%`,
-                    height: '100%',
-                    backgroundColor: isOverBudget ? '#ef4444' : '#10b981',
-                    transition: 'width 0.5s ease'
-                  }} />
-                </div>
-                
-                {isOverBudget && (
-                  <p style={{ color: '#ef4444', fontSize: '0.875rem', marginTop: '0.5rem' }}>
-                    ⚠️ Over budget by ${(budget.spent - budget.allocated).toFixed(2)}
-                  </p>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      ) : (
-        <div className="stat-card">
-          <div style={{ textAlign: 'center', padding: '3rem 2rem' }}>
-            <div style={{
-              width: '80px',
-              height: '80px',
-              background: 'linear-gradient(135deg, var(--color-orange) 0%, #e6890a 100%)',
-              borderRadius: 'var(--radius-large)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto var(--space-8) auto',
-              fontSize: 'var(--font-size-title-2)',
-              color: 'white',
-              boxShadow: 'var(--shadow-medium)'
-            }}>
-              🎯
-            </div>
-            <h3 style={{ marginBottom: '1rem' }}>No Budgets Set</h3>
-            <p style={{ color: '#94a3b8', marginBottom: '2rem' }}>
-              Create your first budget from our {availableCategories.length} expense categories to start tracking your spending limits and financial goals.
-            </p>
+        
+        <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'center' }}>
+          {/* View Toggle */}
+          <div style={{ 
+            display: 'flex', 
+            background: 'var(--color-surface-elevated)',
+            borderRadius: 'var(--radius-medium)',
+            padding: 'var(--space-1)'
+          }}>
             <button
-              className="btn btn-primary"
-              onClick={() => setShowAddForm(true)}
+              onClick={() => setView('grid')}
+              className={view === 'grid' ? 'btn btn-primary' : 'btn btn-ghost'}
+              style={{ padding: 'var(--space-2) var(--space-3)' }}
             >
-              Create First Budget
+              <span>⊞</span>
+            </button>
+            <button
+              onClick={() => setView('list')}
+              className={view === 'list' ? 'btn btn-primary' : 'btn btn-ghost'}
+              style={{ padding: 'var(--space-2) var(--space-3)' }}
+            >
+              <span>☰</span>
             </button>
           </div>
+          
+          {/* Create Budget Button */}
+          <motion.button
+            className="btn btn-primary"
+            onClick={() => setShowCreator(true)}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            + Create Budget
+          </motion.button>
+        </div>
+      </div>
+
+      {/* Budget Overview Cards */}
+      <BudgetOverview 
+        budgets={budgetsWithSpending}
+        transactions={transactions}
+        period={selectedPeriod}
+      />
+
+      {/* Budgets Grid/List */}
+      {budgetsWithSpending.length > 0 ? (
+        <>
+          {/* Period Filter */}
+          <div style={{ 
+            display: 'flex', 
+            gap: 'var(--space-2)',
+            marginBottom: 'var(--space-6)'
+          }}>
+            {(['weekly', 'monthly', 'yearly'] as const).map(period => (
+              <button
+                key={period}
+                onClick={() => setSelectedPeriod(period)}
+                className={`btn ${selectedPeriod === period ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ 
+                  padding: 'var(--space-2) var(--space-4)',
+                  fontSize: 'var(--font-size-footnote)',
+                  textTransform: 'capitalize'
+                }}
+              >
+                {period}
+              </button>
+            ))}
+          </div>
+
+          {/* Budget Cards */}
+          <div className={view === 'grid' ? 'grid grid-auto' : 'grid grid-1'} 
+            style={{ gap: 'var(--space-6)' }}
+          >
+            <AnimatePresence>
+              {budgetsWithSpending
+                .filter(budget => budget.period === selectedPeriod)
+                .map((budget, index) => (
+                  <motion.div
+                    key={budget.id}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <BudgetCard
+                      budget={budget}
+                      onEdit={() => {
+                        setEditingBudget(budget)
+                        setShowCreator(true)
+                      }}
+                      onDelete={() => handleDeleteBudget(budget.id)}
+                      view={view}
+                    />
+                  </motion.div>
+                ))}
+            </AnimatePresence>
+          </div>
+
+          {/* Budget Analytics */}
+          <div style={{ marginTop: 'var(--space-12)' }}>
+            <BudgetAnalytics
+              budgets={budgetsWithSpending}
+              transactions={transactions}
+              period={selectedPeriod}
+            />
+          </div>
+
+          {/* AI Recommendations */}
+          <div style={{ marginTop: 'var(--space-8)' }}>
+            <BudgetRecommendations
+              budgets={budgetsWithSpending}
+              transactions={transactions}
+              onCreateBudget={handleCreateBudget}
+            />
+          </div>
+        </>
+      ) : (
+        /* Empty State */
+        <div className="content-card">
+          <div className="content-card-body" style={{ textAlign: 'center', padding: 'var(--space-16)' }}>
+            <motion.div
+              style={{
+                width: '120px',
+                height: '120px',
+                background: 'linear-gradient(135deg, var(--color-orange) 0%, #e6890a 100%)',
+                borderRadius: 'var(--radius-large)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto var(--space-8) auto',
+                fontSize: '60px',
+                color: 'white',
+                boxShadow: 'var(--shadow-large)'
+              }}
+              animate={{ 
+                rotate: [0, -5, 5, 0],
+                scale: [1, 1.05, 1]
+              }}
+              transition={{ 
+                duration: 3,
+                repeat: Infinity,
+                repeatDelay: 2
+              }}
+            >
+              🎯
+            </motion.div>
+            <h2 className="text-title-2" style={{ marginBottom: 'var(--space-4)' }}>
+              Start Budget Planning
+            </h2>
+            <p className="text-body" style={{ 
+              color: 'var(--color-text-secondary)',
+              marginBottom: 'var(--space-8)',
+              maxWidth: '500px',
+              margin: '0 auto var(--space-8) auto'
+            }}>
+              Create budgets to track your spending across different categories 
+              and get alerts before you overspend.
+            </p>
+            <motion.button
+              className="btn btn-primary btn-large"
+              onClick={() => setShowCreator(true)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              Create Your First Budget
+            </motion.button>
+          </div>
         </div>
       )}
-    </div>
+
+      {/* Budget Creator/Editor Modal */}
+      <AnimatePresence>
+        {showCreator && (
+          <BudgetCreator
+            budget={editingBudget}
+            existingBudgets={budgets}
+            transactions={transactions}
+            onSave={editingBudget ? handleUpdateBudget : handleCreateBudget}
+            onClose={() => {
+              setShowCreator(false)
+              setEditingBudget(null)
+            }}
+          />
+        )}
+      </AnimatePresence>
+    </motion.div>
   )
 }
