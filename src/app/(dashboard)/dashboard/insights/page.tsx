@@ -8,14 +8,13 @@ import InsightFilters from '@/components/insights/InsightFilters'
 import ActionableInsights from '@/components/insights/ActionableInsights'
 import GoalRecommendations from '@/components/insights/GoalRecommendations'
 import FinancialHealthScore from '@/components/insights/FinancialHealthScore'
-import ChatAssistant from '@/components/insights/ChatAssistant'
 
 export default function InsightsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [goals, setGoals] = useState<FinancialGoal[]>([])
   const [insights, setInsights] = useState<AIInsight[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'overview' | 'insights' | 'chat'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'insights'>('overview')
   const [filters, setFilters] = useState({
     type: 'all' as 'all' | AIInsight['type'],
     impact: 'all' as 'all' | AIInsight['impact'],
@@ -193,8 +192,7 @@ export default function InsightsPage() {
         }}>
           {[
             { key: 'overview', label: 'Overview', icon: '📊' },
-            { key: 'insights', label: 'Insights', icon: '💡' },
-            { key: 'chat', label: 'AI Chat', icon: '💬' }
+            { key: 'insights', label: 'Insights', icon: '💡' }
           ].map(tab => (
             <button
               key={tab.key}
@@ -309,24 +307,6 @@ export default function InsightsPage() {
                 }}
               />
             </div>
-          </motion.div>
-        )}
-
-        {/* Chat Tab */}
-        {activeTab === 'chat' && (
-          <motion.div
-            key="chat"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-          >
-            <ChatAssistant
-              transactions={transactions}
-              goals={goals}
-              insights={insights}
-              monthlyIncome={monthlyIncome}
-            />
           </motion.div>
         )}
       </AnimatePresence>

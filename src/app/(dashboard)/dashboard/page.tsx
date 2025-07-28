@@ -9,7 +9,6 @@ import QuickStats from '@/components/dashboard/QuickStats'
 import SpendingTrends from '@/components/dashboard/SpendingTrends'
 import GoalProgress from '@/components/dashboard/GoalProgress'
 import RecentActivity from '@/components/dashboard/RecentActivity'
-import AIAssistant from '@/components/dashboard/AIAssistant'
 
 export default function DashboardPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -362,37 +361,21 @@ export default function DashboardPage() {
         </motion.div>
       </div>
       
-      {/* Recent Activity & AI Assistant */}
-      <div className="grid" style={{ 
-        gridTemplateColumns: '2fr 1fr',
-        gap: 'var(--space-8)',
-        marginTop: 'var(--space-8)'
-      }}>
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <RecentActivity 
-            transactions={transactions}
-            onTransactionEdit={(transaction) => {
-              // Handle transaction edit
-              console.log('Edit transaction:', transaction)
-            }}
-          />
-        </motion.div>
-        
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.5 }}
-        >
-          <AIAssistant 
-            metrics={metrics}
-            transactions={transactions}
-          />
-        </motion.div>
-      </div>
+      {/* Recent Activity */}
+      <motion.div
+        style={{ marginTop: 'var(--space-8)' }}
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.4 }}
+      >
+        <RecentActivity 
+          transactions={transactions}
+          onTransactionEdit={(transaction) => {
+            // Handle transaction edit
+            console.log('Edit transaction:', transaction)
+          }}
+        />
+      </motion.div>
       
       {/* Quick Actions FAB */}
       <motion.div
