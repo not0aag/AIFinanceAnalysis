@@ -24,11 +24,21 @@ export default function AIFinancialAnalyst({
   const [expandedInsights, setExpandedInsights] = useState<Set<string>>(new Set())
   const [processingStage, setProcessingStage] = useState('')
   const retryCount = useRef(0)
+  const lastAnalyzed = useRef<string>('')
   const maxRetries = 3
 
   useEffect(() => {
     const analyzeFinances = async () => {
       if (transactions.length === 0) {
+        setLoading(false)
+        return
+      }
+
+      // Create a unique key for this analysis
+      const analysisKey = `${transactions.length}-${monthlyIncome}-${JSON.stringify(financialGoals)}`
+      
+      // Prevent running if we already analyzed this exact data
+      if (analysisData && lastAnalyzed.current === analysisKey) {
         setLoading(false)
         return
       }
@@ -72,6 +82,7 @@ export default function AIFinancialAnalyst({
 
         const data = await response.json()
         setAnalysisData(data)
+        lastAnalyzed.current = analysisKey // Store the analysis key to prevent re-analysis
         
         // Generate AI insights for storage
         if (onInsightGenerated && data.insights) {
@@ -110,7 +121,7 @@ export default function AIFinancialAnalyst({
     }
 
     analyzeFinances()
-  }, [transactions, monthlyIncome, financialGoals, onInsightGenerated])
+  }, [transactions.length, monthlyIncome]) // Remove onInsightGenerated and financialGoals to prevent loops
 
   const toggleInsight = (insightId: string) => {
     setExpandedInsights(prev => {

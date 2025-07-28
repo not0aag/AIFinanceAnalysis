@@ -6,7 +6,7 @@ import {
   detectSpendingAnomalies,
   generateSavingsStrategy,
 } from "./src/lib/openai";
-import { Transaction, FinancialProfile } from "./src/types/finance";
+import { Transaction } from "./src/types/finance";
 
 async function testAIAnalytics() {
   console.log("🧪 Testing AI Analytics Functionality...\n");
@@ -15,28 +15,8 @@ async function testAIAnalytics() {
   const financialGoals = [
     "Build emergency fund",
     "Save for vacation",
-    "Pay off credit card debt",
+    "Pay off credit card debt"
   ];
-
-  // Create a test profile
-  const testProfile: FinancialProfile = {
-    userId: "user-1",
-    monthlyIncome: 3500,
-    monthlyExpenses: 2800,
-    savingsGoal: 1000,
-    riskTolerance: "moderate",
-    financialGoals: [],
-    preferences: {
-      currency: "USD",
-      timezone: "America/New_York",
-      fiscalYearStart: 1,
-      notifications: {
-        email: true,
-        push: true,
-        sms: false,
-      },
-    },
-  };
 
   // Create proper Transaction objects
   const testTransactions: Transaction[] = [
@@ -44,7 +24,7 @@ async function testAIAnalytics() {
       id: "1",
       userId: "user-1",
       name: "Grocery Shopping",
-      amount: -125.5,
+      amount: -125.50,
       category: "groceries",
       date: "2024-01-15",
       type: "expense",
@@ -52,13 +32,13 @@ async function testAIAnalytics() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       tags: [],
-      isVerified: true,
+      isVerified: true
     },
     {
       id: "2",
       userId: "user-1",
       name: "Gas Station",
-      amount: -45.0,
+      amount: -45.00,
       category: "transportation",
       date: "2024-01-14",
       type: "expense",
@@ -66,13 +46,13 @@ async function testAIAnalytics() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       tags: [],
-      isVerified: true,
+      isVerified: true
     },
     {
       id: "3",
       userId: "user-1",
       name: "Salary",
-      amount: 3500.0,
+      amount: 3500.00,
       category: "salary",
       date: "2024-01-01",
       type: "income",
@@ -80,16 +60,13 @@ async function testAIAnalytics() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       tags: [],
-      isVerified: true,
-    },
+      isVerified: true
+    }
   ];
 
   try {
     console.log("📊 Testing Advanced Insights Generation...");
-    const insights = await generateAdvancedInsights(
-      testTransactions,
-      testProfile
-    );
+    const insights = await generateAdvancedInsights(testTransactions);
     console.log("✅ Advanced Insights:", insights);
     console.log("");
 
@@ -104,12 +81,58 @@ async function testAIAnalytics() {
       monthlyIncome,
       financialGoals
     );
+    "Save for emergency fund",
+    "Reduce dining expenses",
+    "Build investment portfolio",
+  ];
+
+  try {
+    console.log("📊 Testing Advanced Insights Generation...");
+    const insights = await generateAdvancedInsights(
+      sampleTransactions,
+      monthlyIncome,
+      financialGoals
+    );
+    console.log("✅ Advanced Insights:", insights);
+    console.log("");
+
+    console.log("🔍 Testing Anomaly Detection...");
+    const anomalies = await detectSpendingAnomalies(sampleTransactions);
+    console.log("✅ Detected Anomalies:", anomalies);
+    console.log("");
+
+    console.log("💰 Testing Savings Strategy Generation...");
+    const savingsStrategy = await generateSavingsStrategy(
+      sampleTransactions,
+      monthlyIncome,
+      financialGoals
+    );
     console.log("✅ Savings Strategy:", savingsStrategy);
     console.log("");
 
-    console.log("🎉 All AI analytics tests completed successfully!");
+    console.log("🎉 All AI Analytics tests completed successfully!");
   } catch (error) {
     console.error("❌ Error during testing:", error);
+
+    // Test fallback functions
+    console.log("\n🔄 Testing fallback functions...");
+
+    const fallbackInsights = await generateAdvancedInsights(
+      [],
+      monthlyIncome,
+      financialGoals
+    );
+    console.log("✅ Fallback Insights:", fallbackInsights);
+
+    const fallbackAnomalies = await detectSpendingAnomalies([]);
+    console.log("✅ Fallback Anomalies:", fallbackAnomalies);
+
+    const fallbackStrategy = await generateSavingsStrategy(
+      [],
+      monthlyIncome,
+      financialGoals
+    );
+    console.log("✅ Fallback Strategy:", fallbackStrategy);
   }
 }
 
