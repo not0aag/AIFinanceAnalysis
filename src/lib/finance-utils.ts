@@ -52,28 +52,49 @@ export function calculateFinancialMetrics(
   period: "week" | "month" | "year" = "month"
 ): FinancialMetrics {
   const now = new Date();
-  let startDate: Date;
 
-  switch (period) {
-    case "week":
-      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      break;
-    case "month":
-      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-      break;
-    case "year":
-      startDate = new Date(now.getFullYear(), 0, 1);
-      break;
-  }
+  // Filter current period transactions using reliable string comparison
+  const periodTransactions = transactions.filter((transaction) => {
+    switch (period) {
+      case "week":
+        // Show last 7 days
+        const weekAgo = new Date(now);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const transactionDate = new Date(transaction.date + "T00:00:00");
+        return transactionDate >= weekAgo;
+      case "month":
+        // Show current month - use string comparison for reliability
+        const currentMonth = now.toISOString().slice(0, 7); // "2025-08"
+        const transactionMonth = transaction.date.slice(0, 7); // "2025-08"
+        return transactionMonth === currentMonth;
+      case "year":
+        // Show current year - use string comparison for reliability
+        const currentYear = now.getFullYear().toString();
+        const transactionYear = transaction.date.slice(0, 4);
+        return transactionYear === currentYear;
+      default:
+        return true;
+    }
+  });
 
-  const periodTransactions = transactions.filter(
-    (t) => new Date(t.date) >= startDate
-  );
-  const previousPeriodTransactions = transactions.filter((t) => {
-    const date = new Date(t.date);
-    const prevStartDate = new Date(startDate);
-    prevStartDate.setMonth(prevStartDate.getMonth() - 1);
-    return date >= prevStartDate && date < startDate;
+  // Filter previous period transactions for comparison
+  const previousPeriodTransactions = transactions.filter((transaction) => {
+    switch (period) {
+      case "month":
+        // Get previous month
+        const prevMonth = new Date(now);
+        prevMonth.setMonth(prevMonth.getMonth() - 1);
+        const prevMonthStr = prevMonth.toISOString().slice(0, 7); // "2025-07"
+        const transactionMonth = transaction.date.slice(0, 7);
+        return transactionMonth === prevMonthStr;
+      case "year":
+        // Get previous year
+        const prevYear = (now.getFullYear() - 1).toString();
+        const transactionYear = transaction.date.slice(0, 4);
+        return transactionYear === prevYear;
+      default:
+        return false;
+    }
   });
 
   // Current period calculations
@@ -265,6 +286,48 @@ export function generateFinancialReport(
     0
   );
 
+  // Calculate income growth by comparing to previous period
+  let incomeGrowth = 0;
+  let prevPeriodStart: Date;
+  let prevPeriodEnd: Date;
+
+  switch (period) {
+    case "week":
+      prevPeriodStart = new Date(startDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+      prevPeriodEnd = new Date(startDate.getTime() - 1);
+      break;
+    case "month":
+      prevPeriodStart = new Date(startDate);
+      prevPeriodStart.setMonth(prevPeriodStart.getMonth() - 1);
+      prevPeriodEnd = new Date(startDate.getTime() - 1);
+      break;
+    case "quarter":
+      prevPeriodStart = new Date(startDate);
+      prevPeriodStart.setMonth(prevPeriodStart.getMonth() - 3);
+      prevPeriodEnd = new Date(startDate.getTime() - 1);
+      break;
+    case "year":
+      prevPeriodStart = new Date(startDate);
+      prevPeriodStart.setFullYear(prevPeriodStart.getFullYear() - 1);
+      prevPeriodEnd = new Date(startDate.getTime() - 1);
+      break;
+  }
+
+  const prevPeriodTransactions = transactions.filter((t) => {
+    const date = new Date(t.date);
+    return (
+      date >= prevPeriodStart && date <= prevPeriodEnd && t.type === "income"
+    );
+  });
+
+  const prevPeriodIncome = prevPeriodTransactions.reduce(
+    (sum, t) => sum + t.amount,
+    0
+  );
+  if (prevPeriodIncome > 0) {
+    incomeGrowth = ((totalIncome - prevPeriodIncome) / prevPeriodIncome) * 100;
+  }
+
   return {
     period: {
       start: formatDate(startDate, "long"),
@@ -273,7 +336,7 @@ export function generateFinancialReport(
     income: {
       total: totalIncome,
       byCategory: incomeByCategory,
-      growth: 0, // Calculate based on previous period
+      growth: incomeGrowth,
     },
     expenses: {
       total: totalExpenses,

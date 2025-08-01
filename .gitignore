@@ -30,8 +30,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files
-.env*
+# env files (sensitive data)
+.env
+.env.*
 .env.local
 .env.development.local
 .env.test.local
@@ -43,3 +44,25 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Additional sensitive files
+*.key
+*.secret
+config/secrets.*
+.vscode/settings.json
+
+# Development scripts and debugging files
+debug-*.js
+test-*.js
+test-*.ts
+analytics-check.js
+verify-*.js
+verify-*.mjs
+clear-storage.js
+
+# Build and restart scripts
+restart-dev*.bat
+git-*.bat
+npx
+0
+sum

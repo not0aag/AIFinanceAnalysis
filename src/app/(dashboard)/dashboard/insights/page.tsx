@@ -4,9 +4,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Transaction, AIInsight, FinancialGoal } from '@/types/finance'
 import AIFinancialAnalyst from '@/components/AIFinancialAnalyst'
-import InsightFilters from '@/components/insights/InsightFilters'
-import ActionableInsights from '@/components/insights/ActionableInsights'
-import GoalRecommendations from '@/components/insights/GoalRecommendations'
 import FinancialHealthScore from '@/components/insights/FinancialHealthScore'
 
 export default function InsightsPage() {
@@ -14,13 +11,6 @@ export default function InsightsPage() {
   const [goals, setGoals] = useState<FinancialGoal[]>([])
   const [insights, setInsights] = useState<AIInsight[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'overview' | 'insights'>('overview')
-  const [filters, setFilters] = useState({
-    type: 'all' as 'all' | AIInsight['type'],
-    impact: 'all' as 'all' | AIInsight['impact'],
-    category: 'all',
-    timeframe: 'all'
-  })
   
   useEffect(() => {
     const loadData = async () => {
@@ -34,8 +24,11 @@ export default function InsightsPage() {
           const typedTransactions: Transaction[] = parsed.map((t: any) => ({
             ...t,
             id: t.id?.toString() || Date.now().toString(),
-            userId: 'user-1',
-            type: t.amount > 0 ? 'income' : 'expense',
+            userId: t.userId || 'user-1',
+            // Preserve the original type and amount as they are correctly set
+            type: t.type || (t.amount > 0 ? 'income' : 'expense'),
+            // Keep the original amount - sample data already has correct signs
+            amount: t.amount,
             createdAt: t.createdAt || t.date,
             updatedAt: t.updatedAt || t.date
           }))
@@ -160,15 +153,6 @@ export default function InsightsPage() {
     )
   }
 
-  // Filter insights based on current filters
-  const filteredInsights = insights.filter(insight => {
-    if (filters.type !== 'all' && insight.type !== filters.type) return false
-    if (filters.impact !== 'all' && insight.impact !== filters.impact) return false
-    if (filters.category !== 'all' && insight.category !== filters.category) return false
-    if (insight.dismissed) return false
-    return true
-  })
-
   return (
     <motion.div 
       className="fade-in"
@@ -181,67 +165,14 @@ export default function InsightsPage() {
         <p className="page-subtitle">
           Powered by advanced machine learning algorithms
         </p>
-        
-        {/* Tab Navigation */}
-        <div style={{ 
-          display: 'flex', 
-          gap: 'var(--space-2)',
-          marginTop: 'var(--space-6)',
-          borderBottom: '1px solid var(--color-border)',
-          paddingBottom: 'var(--space-1)'
-        }}>
-          {[
-            { key: 'overview', label: 'Overview', icon: '📊' },
-            { key: 'insights', label: 'Insights', icon: '💡' }
-          ].map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key as any)}
-              style={{
-                padding: 'var(--space-3) var(--space-6)',
-                background: 'none',
-                border: 'none',
-                color: activeTab === tab.key ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
-                fontWeight: activeTab === tab.key ? '600' : '400',
-                cursor: 'pointer',
-                position: 'relative',
-                transition: 'all 0.3s var(--ease-in-out)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--space-2)'
-              }}
-            >
-              <span>{tab.icon}</span>
-              {tab.label}
-              {activeTab === tab.key && (
-                <motion.div
-                  layoutId="activeTab"
-                  style={{
-                    position: 'absolute',
-                    bottom: '-2px',
-                    left: 0,
-                    right: 0,
-                    height: '2px',
-                    background: 'var(--color-blue)',
-                    borderRadius: 'var(--radius-small)'
-                  }}
-                />
-              )}
-            </button>
-          ))}
-        </div>
       </div>
 
-      <AnimatePresence mode="wait">
-        {/* Overview Tab */}
-        {activeTab === 'overview' && (
-          <motion.div
-            key="overview"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-          >
+      {/* AI Insights Content */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
             {/* Financial Health Score */}
             <FinancialHealthScore 
               transactions={transactions}
@@ -263,53 +194,6 @@ export default function InsightsPage() {
               />
             </div>
           </motion.div>
-        )}
-
-        {/* Insights Tab */}
-        {activeTab === 'insights' && (
-          <motion.div
-            key="insights"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-          >
-            {/* Insight Filters */}
-            <InsightFilters 
-              filters={filters}
-              onFilterChange={setFilters}
-              insightCounts={{
-                total: insights.length,
-                byType: insights.reduce((acc, i) => {
-                  acc[i.type] = (acc[i.type] || 0) + 1
-                  return acc
-                }, {} as Record<string, number>)
-              }}
-            />
-            
-            {/* Actionable Insights Grid */}
-            <ActionableInsights
-              insights={filteredInsights}
-              onAction={handleInsightAction}
-              transactions={transactions}
-            />
-            
-            {/* Goal Recommendations */}
-            <div style={{ marginTop: 'var(--space-8)' }}>
-              <GoalRecommendations
-                transactions={transactions}
-                existingGoals={goals}
-                monthlyIncome={monthlyIncome}
-                onGoalCreate={(newGoal: FinancialGoal) => {
-                  const updated = [...goals, newGoal]
-                  setGoals(updated)
-                  localStorage.setItem('finance-ai-goals', JSON.stringify(updated))
-                }}
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </motion.div>
   )
 }

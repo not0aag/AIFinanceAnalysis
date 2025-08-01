@@ -2,6 +2,8 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
+import { Logo } from '@/components/Logo'
+import SignOutButton from '@/components/SignOutButton'
 
 export default function DashboardLayoutClient({
   children,
@@ -32,10 +34,7 @@ export default function DashboardLayoutClient({
         <div className="sidebar-content">
           {/* Logo */}
           <div className="sidebar-header">
-            <div className="logo">
-              <div className="logo-icon">$</div>
-              <div className="logo-text">Finance AI</div>
-            </div>
+            <Logo size="medium" showText={true} />
           </div>
           
           {/* Navigation */}
@@ -66,6 +65,11 @@ export default function DashboardLayoutClient({
             <button onClick={handleSignOut} className="sign-out-btn">
               Sign Out
             </button>
+            
+            {/* Enhanced Sign Out Button */}
+            <div style={{ marginTop: 'var(--space-4)' }}>
+              <SignOutButton variant="compact" size="medium" />
+            </div>
           </div>
         </div>
       </div>

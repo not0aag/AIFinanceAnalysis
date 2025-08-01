@@ -19,6 +19,43 @@ export default function RecentActivity({ transactions, onTransactionEdit }: Rece
         <p className="content-card-subtitle">Your latest transactions</p>
       </div>
       <div className="content-card-body">
+        {transactions.length === 0 ? (
+          // Empty state when no transactions
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '200px',
+            textAlign: 'center',
+            gap: 'var(--space-4)'
+          }}>
+            <div style={{
+              fontSize: '48px',
+              opacity: 0.5
+            }}>
+              📝
+            </div>
+            <div>
+              <h4 style={{
+                margin: 0,
+                marginBottom: 'var(--space-2)',
+                fontSize: 'var(--font-size-headline)',
+                fontWeight: '600',
+                color: 'var(--color-text-primary)'
+              }}>
+                No transactions yet
+              </h4>
+              <p style={{
+                margin: 0,
+                fontSize: 'var(--font-size-body)',
+                color: 'var(--color-text-secondary)'
+              }}>
+                Click the + button to add your first transaction
+              </p>
+            </div>
+          </div>
+        ) : (
         <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
           {recentTransactions.map((transaction, index) => (
             <motion.div
@@ -64,13 +101,14 @@ export default function RecentActivity({ transactions, onTransactionEdit }: Rece
               </div>
               <div style={{
                 fontWeight: '600',
-                color: transaction.amount > 0 ? 'var(--color-green)' : 'var(--color-text-primary)'
+                color: transaction.amount > 0 ? 'var(--color-green)' : 'var(--color-red)'
               }}>
-                {transaction.amount > 0 ? '+' : ''}{formatCurrency(Math.abs(transaction.amount))}
+                {transaction.amount > 0 ? '+' : '-'}{formatCurrency(Math.abs(transaction.amount))}
               </div>
             </motion.div>
           ))}
         </div>
+        )}
       </div>
     </div>
   )

@@ -27,8 +27,11 @@ export default function BudgetsPage() {
         const typedTransactions: Transaction[] = parsed.map((t: any) => ({
           ...t,
           id: t.id?.toString() || Date.now().toString(),
-          userId: 'user-1',
-          type: t.amount > 0 ? 'income' : 'expense',
+          userId: t.userId || 'user-1',
+          // Preserve the original type and amount as they are correctly set
+          type: t.type || (t.amount > 0 ? 'income' : 'expense'),
+          // Keep the original amount - sample data already has correct signs
+          amount: t.amount,
           createdAt: t.createdAt || t.date,
           updatedAt: t.updatedAt || t.date
         }))

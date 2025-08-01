@@ -12,7 +12,7 @@
   box-sizing: border-box;
 }
 
-/* Apple Color System - Dark Theme (Default) */
+/* Apple Color System - Base Colors */
 :root {
   /* Core colors */
   --color-black: #000000;
@@ -23,19 +23,7 @@
   --color-white: #f5f5f7;
   --color-off-white: #fbfbfd;
 
-  /* Dark theme colors */
-  --color-background: var(--color-black);
-  --color-surface: var(--color-almost-black);
-  --color-surface-elevated: var(--color-dark-gray);
-  --color-border: var(--color-dark-gray);
-  --color-border-subtle: #2d2d2f;
-
-  /* Text colors */
-  --color-text-primary: var(--color-white);
-  --color-text-secondary: #a1a1a6;
-  --color-text-tertiary: var(--color-light-gray);
-
-  /* Accent colors */
+  /* Accent colors (theme-independent) */
   --color-blue: #007aff;
   --color-blue-dark: #0051d3;
   --color-green: #30d158;
@@ -43,6 +31,26 @@
   --color-orange: #ff9f0a;
   --color-red: #ff3b30;
   --color-purple: #af52de;
+}
+
+/* Default Dark Theme - Applied to :root for fallback */
+:root {
+  /* Dark theme colors as default */
+  --color-background: var(--color-black);
+  --color-surface: var(--color-almost-black);
+  --color-surface-elevated: var(--color-dark-gray);
+  --color-border: var(--color-dark-gray);
+  --color-border-subtle: #2d2d2f;
+
+  /* Dark theme text colors */
+  --color-text-primary: var(--color-white);
+  --color-text-secondary: #a1a1a6;
+  --color-text-tertiary: var(--color-light-gray);
+
+  /* Dark theme shadows */
+  --shadow-small: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+  --shadow-medium: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
+  --shadow-large: 0 8px 25px rgba(0, 0, 0, 0.15), 0 5px 10px rgba(0, 0, 0, 0.05);
   --color-indigo: #5856d6;
   --color-pink: #ff2d92;
   --color-teal: #5ac8fa;
@@ -91,24 +99,68 @@
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
 }
 
-/* Light Theme Override */
-.theme-light {
+/* Light Theme Override - Higher specificity */
+html.light,
+html[data-theme="light"],
+.light {
   /* Light theme colors */
-  --color-background: #ffffff;
-  --color-surface: #f5f5f7;
-  --color-surface-elevated: #ffffff;
-  --color-border: #e5e5e7;
-  --color-border-subtle: #d2d2d7;
+  --color-background: #ffffff !important;
+  --color-surface: #f5f5f7 !important;
+  --color-surface-elevated: #ffffff !important;
+  --color-border: #e5e5e7 !important;
+  --color-border-subtle: #d2d2d7 !important;
 
   /* Light theme text colors */
-  --color-text-primary: #1d1d1f;
-  --color-text-secondary: #86868b;
-  --color-text-tertiary: #98989d;
+  --color-text-primary: #1d1d1f !important;
+  --color-text-secondary: #86868b !important;
+  --color-text-tertiary: #98989d !important;
 
   /* Light theme shadows */
-  --shadow-small: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.06);
-  --shadow-large: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+  --shadow-small: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+  --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.06) !important;
+  --shadow-large: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Keep existing theme-light for backward compatibility */
+.theme-light {
+  /* Light theme colors */
+  --color-background: #ffffff !important;
+  --color-surface: #f5f5f7 !important;
+  --color-surface-elevated: #ffffff !important;
+  --color-border: #e5e5e7 !important;
+  --color-border-subtle: #d2d2d7 !important;
+
+  /* Light theme text colors */
+  --color-text-primary: #1d1d1f !important;
+  --color-text-secondary: #86868b !important;
+  --color-text-tertiary: #98989d !important;
+
+  /* Light theme shadows */
+  --shadow-small: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+  --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.06) !important;
+  --shadow-large: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Dark Theme - Next.js themes standard */
+html.dark,
+html[data-theme="dark"],
+.dark {
+  /* Dark theme colors */
+  --color-background: var(--color-black) !important;
+  --color-surface: var(--color-almost-black) !important;
+  --color-surface-elevated: var(--color-dark-gray) !important;
+  --color-border: var(--color-dark-gray) !important;
+  --color-border-subtle: #2d2d2f !important;
+
+  /* Dark theme text colors */
+  --color-text-primary: var(--color-white) !important;
+  --color-text-secondary: #a1a1a6 !important;
+  --color-text-tertiary: var(--color-light-gray) !important;
+
+  /* Dark theme shadows */
+  --shadow-small: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24) !important;
+  --shadow-medium: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23) !important;
+  --shadow-large: 0 8px 25px rgba(0, 0, 0, 0.15), 0 5px 10px rgba(0, 0, 0, 0.05) !important;
 }
 
 /* Dark Theme Explicit (for when theme-dark class is applied) */
@@ -1085,4 +1137,111 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Form Styles */
+.modal-header {
+  padding: var(--space-8) var(--space-8) var(--space-6) var(--space-8);
+  border-bottom: 1px solid var(--color-border);
+  position: relative;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: var(--font-size-title-2);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  letter-spacing: -0.022em;
+  padding-right: var(--space-12);
+}
+
+.modal-body {
+  padding: var(--space-8);
+}
+
+.form-group {
+  margin-bottom: var(--space-6);
+}
+
+.form-group label {
+  display: block;
+  font-size: var(--font-size-subheadline);
+  font-weight: 500;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2);
+  letter-spacing: -0.0024em;
+}
+
+.form-control {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-medium);
+  font-size: var(--font-size-body);
+  font-family: inherit;
+  background: var(--color-surface-elevated);
+  color: var(--color-text-primary);
+  transition: all 0.2s var(--ease-in-out);
+  box-sizing: border-box;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--color-blue);
+  background: var(--color-background);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+}
+
+.form-control:hover {
+  border-color: var(--color-border-subtle);
+}
+
+.form-control.error {
+  border-color: var(--color-red);
+  background: rgba(255, 59, 48, 0.05);
+}
+
+.form-control.error:focus {
+  box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.1);
+}
+
+.error-message {
+  display: block;
+  color: var(--color-red);
+  font-size: var(--font-size-footnote);
+  margin-top: var(--space-2);
+  font-weight: 500;
+}
+
+.modal-actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  margin-top: var(--space-8);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--color-border);
+}
+
+select.form-control {
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right var(--space-3) center;
+  background-repeat: no-repeat;
+  background-size: 16px 12px;
+  padding-right: var(--space-10);
+}
+
+input[type="number"].form-control {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input[type="number"].form-control::-webkit-outer-spin-button,
+input[type="number"].form-control::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="date"].form-control {
+  cursor: pointer;
 }

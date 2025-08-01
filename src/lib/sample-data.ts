@@ -1,5 +1,110 @@
 // Sample transaction data for testing AI insights
 export const sampleTransactions = [
+  // Current month (August 2025) transactions
+  {
+    id: "current-1",
+    date: "2025-08-01",
+    amount: 5000.0,
+    description: "Monthly Salary",
+    category: "Salary",
+    type: "income" as const,
+    merchant: "TechCorp Inc",
+    account: "Main Checking",
+  },
+  {
+    id: "current-2",
+    date: "2025-08-01",
+    amount: -1200.0,
+    description: "Monthly Rent",
+    category: "Housing",
+    type: "expense" as const,
+    merchant: "Property Management",
+    account: "Main Checking",
+  },
+  {
+    id: "current-3",
+    date: "2025-08-02",
+    amount: -300.0,
+    description: "Grocery Shopping",
+    category: "Food & Dining",
+    type: "expense" as const,
+    merchant: "Whole Foods",
+    account: "Main Checking",
+  },
+  {
+    id: "current-4",
+    date: "2025-08-03",
+    amount: -150.0,
+    description: "Gas Station",
+    category: "Transportation",
+    type: "expense" as const,
+    merchant: "Shell",
+    account: "Main Checking",
+  },
+  {
+    id: "current-5",
+    date: "2025-08-05",
+    amount: -89.99,
+    description: "Amazon Purchase",
+    category: "Shopping",
+    type: "expense" as const,
+    merchant: "Amazon",
+    account: "Credit Card",
+  },
+  {
+    id: "current-6",
+    date: "2025-08-07",
+    amount: 500.0,
+    description: "Freelance Project",
+    category: "Freelance",
+    type: "income" as const,
+    merchant: "Client ABC",
+    account: "Main Checking",
+  },
+  {
+    id: "current-7",
+    date: "2025-08-10",
+    amount: -200.0,
+    description: "Dinner Out",
+    category: "Food & Dining",
+    type: "expense" as const,
+    merchant: "Italian Restaurant",
+    account: "Credit Card",
+  },
+
+  // Previous month (July 2025) for growth calculations
+  {
+    id: "prev-1",
+    date: "2025-07-01",
+    amount: 4800.0,
+    description: "Monthly Salary",
+    category: "Salary",
+    type: "income" as const,
+    merchant: "TechCorp Inc",
+    account: "Main Checking",
+  },
+  {
+    id: "prev-2",
+    date: "2025-07-01",
+    amount: -1200.0,
+    description: "Monthly Rent",
+    category: "Housing",
+    type: "expense" as const,
+    merchant: "Property Management",
+    account: "Main Checking",
+  },
+  {
+    id: "prev-3",
+    date: "2025-07-03",
+    amount: -250.0,
+    description: "Grocery Shopping",
+    category: "Food & Dining",
+    type: "expense" as const,
+    merchant: "Safeway",
+    account: "Main Checking",
+  },
+
+  // Older sample data for historical patterns
   {
     id: "1",
     date: "2024-01-15",
@@ -149,3 +254,34 @@ export const sampleBudgets = [
     period: "monthly",
   },
 ];
+
+// Function to initialize empty data structure (no sample data)
+export function initializeSampleData(): void {
+  if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+    const existingTransactions = localStorage.getItem(
+      "finance-ai-transactions"
+    );
+
+    // Only initialize empty array if no data exists at all
+    if (!existingTransactions) {
+      localStorage.setItem("finance-ai-transactions", JSON.stringify([]));
+      console.log(
+        "✅ Initialized with empty transaction data - ready for user input"
+      );
+    }
+  }
+}
+
+// Get current month sample transactions for demo
+export function getCurrentMonthSamples() {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+
+  return sampleTransactions.filter((t) => {
+    const date = new Date(t.date);
+    return (
+      date.getFullYear() === currentYear && date.getMonth() + 1 === currentMonth
+    );
+  });
+}

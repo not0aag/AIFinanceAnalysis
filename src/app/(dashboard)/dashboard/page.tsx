@@ -5,10 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Onboarding from '@/components/Onboarding'
 import { Transaction, FinancialGoal, SpendingPattern } from '@/types/finance'
 import { calculateFinancialMetrics, formatCurrency } from '@/lib/finance-utils'
+import { initializeSampleData } from '@/lib/sample-data'
 import QuickStats from '@/components/dashboard/QuickStats'
 import SpendingTrends from '@/components/dashboard/SpendingTrends'
 import GoalProgress from '@/components/dashboard/GoalProgress'
 import RecentActivity from '@/components/dashboard/RecentActivity'
+import SignOutButton from '@/components/SignOutButton'
 
 export default function DashboardPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -24,6 +26,9 @@ export default function DashboardPage() {
       try {
         setIsLoading(true)
         
+        // Initialize sample data if none exists
+        initializeSampleData()
+        
         // Load transactions
         const savedTransactions = localStorage.getItem('finance-ai-transactions')
         if (savedTransactions) {
@@ -32,8 +37,11 @@ export default function DashboardPage() {
           const typedTransactions: Transaction[] = parsed.map((t: any) => ({
             ...t,
             id: t.id?.toString() || Date.now().toString(),
-            userId: 'user-1',
-            type: t.amount > 0 ? 'income' : 'expense',
+            userId: t.userId || 'user-1',
+            // Preserve the original type and amount as they are correctly set
+            type: t.type || (t.amount > 0 ? 'income' : 'expense'),
+            // Keep the original amount - sample data already has correct signs
+            amount: t.amount,
             createdAt: t.createdAt || t.date,
             updatedAt: t.updatedAt || t.date
           }))
@@ -383,12 +391,26 @@ export default function DashboardPage() {
           position: 'fixed',
           bottom: 'var(--space-8)',
           right: 'var(--space-8)',
-          zIndex: 100
+          zIndex: 100,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 'var(--space-3)',
+          alignItems: 'flex-end'
         }}
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ delay: 0.6, type: "spring" }}
       >
+        {/* Sign Out Button */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.8 }}
+        >
+          <SignOutButton variant="icon-only" size="medium" />
+        </motion.div>
+
+        {/* Add Transaction FAB */}
         <motion.button
           className="btn btn-primary"
           onClick={() => setShowOnboarding(true)}
