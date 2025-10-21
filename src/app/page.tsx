@@ -69,7 +69,7 @@ export default function RootPage() {
           display: 'block',
           width: '100%'
         }}>
-          Welcome to Finance AI
+          Welcome to Finance AI Dashboard
         </h1>
 
         <p style={{
