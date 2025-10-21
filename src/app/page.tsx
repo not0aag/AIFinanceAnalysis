@@ -7,13 +7,20 @@ export default function RootPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Check if user is authenticated
-    const isAuth = localStorage.getItem('finance-ai-auth')
-    if (isAuth) {
-      router.push('/dashboard')
-    } else {
-      router.push('/login')
+    // Auto-login as demo user for public sharing
+    const demoUser = {
+      id: "demo-user-123",
+      email: "demo@financeai.com",
+      name: "Demo User",
+      monthlyIncome: 5000,
     }
+    
+    // Set demo user in localStorage
+    localStorage.setItem('finance-ai-user', JSON.stringify(demoUser))
+    localStorage.setItem('finance-ai-auth', 'true')
+    
+    // Redirect to dashboard immediately
+    router.push('/dashboard')
   }, [router])
 
   return (
