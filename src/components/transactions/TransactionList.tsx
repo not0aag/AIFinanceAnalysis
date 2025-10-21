@@ -83,7 +83,7 @@ export default function TransactionList({
     <div className="space-y-3">
       {transactions.length === 0 ? (
         <div className="text-center py-12">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-gray-500/10 to-slate-500/10 border border-gray-500/30 mb-4">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-sm bg-gradient-to-br from-gray-500/10 to-slate-500/10 border border-gray-500/30 mb-4">
             <img 
               src="/icons/categories/saving.jpeg" 
               alt="No transactions"
@@ -105,12 +105,12 @@ export default function TransactionList({
               transition={{ delay: index * 0.03, type: 'spring', stiffness: 400, damping: 25 }}
               className="group relative"
             >
-              <div className={`glass-card rounded-xl p-3.5 hover:shadow-xl transition-all duration-300 border ${config.borderColor} bg-gradient-to-br ${config.gradient}`}>
+              <div className={`glass-card rounded-none p-4 hover:shadow-lg transition-all duration-300 border-b ${config.borderColor} bg-gradient-to-br ${config.gradient}`}>
                 <div className="flex items-center justify-between gap-4">
                   {/* Left: Icon + Name + Category */}
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div className="relative flex-shrink-0">
-                      <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${config.gradient} border ${config.borderColor} flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 shadow-lg overflow-hidden`}>
+                      <div className={`w-11 h-11 rounded-none bg-gradient-to-br ${config.gradient} border ${config.borderColor} flex items-center justify-center transition-all duration-200 group-hover:scale-105 shadow-sm overflow-hidden`}>
                         <img 
                           src={config.image}
                           alt={transaction.category}
@@ -130,14 +130,13 @@ export default function TransactionList({
                           }}
                         />
                       </div>
-                      {/* Glow effect */}
-                      <div className={`absolute inset-0 rounded-xl bg-gradient-to-br ${config.gradient} blur-md opacity-0 group-hover:opacity-50 transition-opacity duration-300 -z-10`}></div>
+                      {/* Removed glow effect for cleaner look */}
                     </div>
                     
                     <div className="flex-1 min-w-0">
                       <h4 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{transaction.name}</h4>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs px-2.5 py-0.5 rounded-lg bg-secondary/80 font-medium text-muted-foreground border border-border/50">
+                        <span className="text-xs px-2 py-0.5 rounded-sm bg-secondary/80 font-medium text-muted-foreground border border-border/50">
                           {transaction.category}
                         </span>
                       </div>
@@ -145,7 +144,7 @@ export default function TransactionList({
                   </div>
                   
                   {/* Center: Date */}
-                  <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground bg-secondary/50 px-3 py-1.5 rounded-lg border border-border/50">
+                  <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground bg-secondary/50 px-2.5 py-1.5 rounded-sm border border-border/50">
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
@@ -160,24 +159,24 @@ export default function TransactionList({
                     </div>
                     
                     {/* Action Buttons */}
-                    <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-x-0 translate-x-2">
+                    <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-all duration-200 transform group-hover:translate-x-0 translate-x-2">
                       <button
                         onClick={() => onDuplicate(transaction)}
-                        className="p-1.5 rounded-lg hover:bg-blue-500/20 hover:scale-110 transition-all duration-200 border border-transparent hover:border-blue-500/30"
+                        className="p-1.5 rounded-sm hover:bg-blue-500/20 hover:scale-105 transition-all duration-150 border border-transparent hover:border-blue-500/30"
                         title="Duplicate"
                       >
                         <Copy className="h-3.5 w-3.5 text-blue-600" />
                       </button>
                       <button
                         onClick={() => onEdit(transaction)}
-                        className="p-1.5 rounded-lg hover:bg-primary/20 hover:scale-110 transition-all duration-200 border border-transparent hover:border-primary/30"
+                        className="p-1.5 rounded-sm hover:bg-primary/20 hover:scale-105 transition-all duration-150 border border-transparent hover:border-primary/30"
                         title="Edit"
                       >
                         <Edit2 className="h-3.5 w-3.5 text-primary" />
                       </button>
                       <button
                         onClick={() => onDelete(transaction.id)}
-                        className="p-1.5 rounded-lg hover:bg-red-500/20 hover:scale-110 transition-all duration-200 border border-transparent hover:border-red-500/30"
+                        className="p-1.5 rounded-sm hover:bg-red-500/20 hover:scale-105 transition-all duration-150 border border-transparent hover:border-red-500/30"
                         title="Delete"
                       >
                         <Trash2 className="h-3.5 w-3.5 text-red-600" />
