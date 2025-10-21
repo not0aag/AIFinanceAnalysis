@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { generateInsight } from "@/lib/openai";
 
 // Force dynamic rendering
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {

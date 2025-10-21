@@ -6,7 +6,7 @@ let openaiClient: OpenAI | null = null;
 function getOpenAIClient() {
   if (!openaiClient) {
     openaiClient = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY || 'dummy-key-for-build',
+      apiKey: process.env.OPENAI_API_KEY || "dummy-key-for-build",
     });
   }
   return openaiClient;
