@@ -277,13 +277,22 @@ export default function TransactionsPage() {
           </p>
         </div>
         
-        <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
-          <button
+        <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
+          <motion.button
             className="btn btn-secondary"
             onClick={() => setShowBulkImport(true)}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--space-2)',
+              padding: 'var(--space-3) var(--space-5)'
+            }}
           >
-            📥 Import
-          </button>
+            <span>📥</span>
+            <span>Import</span>
+          </motion.button>
           <motion.button
             className="btn btn-primary"
             onClick={() => {
@@ -292,8 +301,17 @@ export default function TransactionsPage() {
             }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--space-2)',
+              padding: 'var(--space-3) var(--space-6)',
+              fontWeight: '600',
+              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+            }}
           >
-            + Add Transaction
+            <span style={{ fontSize: '20px', lineHeight: '1' }}>+</span>
+            <span>Add Transaction</span>
           </motion.button>
         </div>
       </div>
@@ -444,8 +462,19 @@ export default function TransactionsPage() {
                   onClick={() => setShowForm(true)}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--space-3)',
+                    margin: '0 auto',
+                    padding: 'var(--space-4) var(--space-8)',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    boxShadow: '0 6px 20px rgba(59, 130, 246, 0.4)'
+                  }}
                 >
-                  Add First Transaction
+                  <span style={{ fontSize: '24px', lineHeight: '1' }}>+</span>
+                  <span>Add First Transaction</span>
                 </motion.button>
               </>
             ) : (
@@ -485,6 +514,39 @@ export default function TransactionsPage() {
           />
         )}
       </AnimatePresence>
+
+      {/* Floating Action Button for Mobile */}
+      <motion.button
+        className="btn btn-primary"
+        onClick={() => {
+          setEditingTransaction(null)
+          setShowForm(true)
+        }}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        initial={{ opacity: 0, scale: 0 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.3 }}
+        style={{
+          position: 'fixed',
+          bottom: 'var(--space-6)',
+          right: 'var(--space-6)',
+          width: '64px',
+          height: '64px',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '32px',
+          fontWeight: 'bold',
+          boxShadow: '0 8px 24px rgba(59, 130, 246, 0.5)',
+          zIndex: 999,
+          padding: 0
+        }}
+        title="Add Transaction"
+      >
+        +
+      </motion.button>
     </motion.div>
   )
 }
