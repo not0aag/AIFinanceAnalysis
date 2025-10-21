@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { FinancialGoal } from '@/types/finance'
-import { formatCurrency } from '@/lib/finance-utils'
+import { formatCurrency, parseAmount } from '@/lib/finance-utils'
 import GoalForm from '@/components/goals/GoalForm'
 
 interface GoalProgressProps {
@@ -232,7 +232,7 @@ export default function GoalProgress({ goals, onGoalUpdate }: GoalProgressProps)
                     <button
                       className="btn btn-primary"
                       onClick={() => {
-                        const amount = parseFloat(prompt('Enter contribution amount:') || '0')
+                        const amount = parseAmount(prompt('Enter contribution amount:') || '0')
                         if (amount > 0) handleContribute(goal.id, amount)
                       }}
                       style={{ 

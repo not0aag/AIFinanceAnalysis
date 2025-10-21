@@ -10,6 +10,7 @@ import TransactionSearch from '@/components/transactions/TransactionSearch'
 import TransactionStats from '@/components/transactions/TransactionStats'
 import BulkImport from '@/components/transactions/BulkImport'
 import { validateTransaction } from '@/lib/validation'
+import { parseAmount } from '@/lib/finance-utils'
 
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -128,11 +129,11 @@ export default function TransactionsPage() {
 
     // Amount filter
     if (filters.minAmount) {
-      const min = parseFloat(filters.minAmount)
+      const min = parseAmount(filters.minAmount)
       filtered = filtered.filter(t => Math.abs(t.amount) >= min)
     }
     if (filters.maxAmount) {
-      const max = parseFloat(filters.maxAmount)
+      const max = parseAmount(filters.maxAmount)
       filtered = filtered.filter(t => Math.abs(t.amount) <= max)
     }
 

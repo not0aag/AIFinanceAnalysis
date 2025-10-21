@@ -4,6 +4,35 @@ import {
   SpendingPattern,
 } from "@/types/finance";
 
+/**
+ * Safely parse amount from user input, avoiding floating-point precision issues
+ * Converts to cents first, then back to dollars
+ * 
+ * Examples:
+ * - parseAmount("200") -> 200.00 (not 199.99999...)
+ * - parseAmount("99.99") -> 99.99 (not 99.98999...)
+ * - parseAmount("$1,234.56") -> 1234.56
+ * 
+ * @param value - The value to parse (string or number)
+ * @returns Safely parsed number with exactly 2 decimal places
+ */
+export function parseAmount(value: string | number): number {
+  if (typeof value === 'number') {
+    // Already a number, just ensure 2 decimal places
+    return Math.round(value * 100) / 100;
+  }
+  
+  // Remove currency symbols, commas, and other non-numeric chars (except . and -)
+  const cleaned = value.toString().replace(/[^0-9.-]/g, '');
+  const parsed = parseFloat(cleaned);
+  
+  if (isNaN(parsed)) return 0;
+  
+  // Round to 2 decimal places using cents to avoid floating-point errors
+  // This converts 200 -> 20000 cents -> back to 200.00
+  return Math.round(parsed * 100) / 100;
+}
+
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",

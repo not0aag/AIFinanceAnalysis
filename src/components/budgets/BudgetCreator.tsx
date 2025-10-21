@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Budget } from '@/types/finance'
+import { parseAmount } from '@/lib/finance-utils'
 
 interface BudgetCreatorProps {
   budget?: Budget | null
@@ -180,7 +181,7 @@ export default function BudgetCreator({ budget, existingBudgets, transactions, o
                   type="number"
                   value={formData.allocated || ''}
                   onChange={(e) => {
-                    setFormData({ ...formData, allocated: parseFloat(e.target.value) || 0 })
+                    setFormData({ ...formData, allocated: parseAmount(e.target.value) })
                     setErrors({ ...errors, allocated: '' })
                   }}
                   className="input"

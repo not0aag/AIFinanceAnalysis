@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Transaction as FullTransaction } from '@/types/finance'
+import { parseAmount } from '@/lib/finance-utils'
 
 interface Transaction {
   id: number
@@ -176,8 +177,8 @@ export default function Onboarding({ onTransactionsAdded, existingTransactions }
       return
     }
 
-    // Calculate the correct amount based on type
-    let amount = Math.abs(parseFloat(currentTransaction.amount))
+    // Calculate the correct amount based on type using safe parsing
+    let amount = Math.abs(parseAmount(currentTransaction.amount))
     if (currentTransaction.type === 'expense') {
       amount = -amount // Make expenses negative
     }
