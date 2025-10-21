@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
 // Force dynamic rendering to avoid build-time errors
@@ -15,64 +14,55 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   
   const router = useRouter()
-  const supabase = createClient()
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError('')
 
-    try {
-      if (isSignUp) {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-        })
-        if (error) throw error
-        
-        if (data.user) {
-          router.push('/dashboard')
-        }
+    // Simulate loading for better UX
+    setTimeout(() => {
+      // For localStorage version, just validate and redirect
+      if (email && password) {
+        // Store a simple auth flag in localStorage
+        localStorage.setItem('finance-ai-auth', 'true')
+        localStorage.setItem('finance-ai-user', JSON.stringify({ email }))
+        router.push('/dashboard')
       } else {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
-        if (error) throw error
-        
-        if (data.user) {
-          router.push('/dashboard')
-        }
+        setError('Please enter your email and password')
+        setIsLoading(false)
       }
-    } catch (error: any) {
-      console.error('Auth error:', error)
-      setError(error.message || 'An error occurred during authentication')
-    } finally {
-      setIsLoading(false)
-    }
+    }, 500)
   }
 
   return (
     <div className="login-layout">
       <div className="login-card fade-in">
-        {/* Clean Header */}
+        {/* Clean Header with Logo */}
         <div style={{ textAlign: 'center', marginBottom: 'var(--space-12)' }}>
           <div style={{
-            width: '72px',
-            height: '72px',
+            width: '80px',
+            height: '80px',
             background: 'linear-gradient(135deg, var(--color-blue) 0%, var(--color-blue-dark) 100%)',
             borderRadius: 'var(--radius-large)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             margin: '0 auto var(--space-6) auto',
-            boxShadow: 'var(--shadow-medium)'
+            boxShadow: 'var(--shadow-medium)',
+            padding: '12px',
+            overflow: 'hidden'
           }}>
-            <span style={{
-              color: 'white',
-              fontSize: 'var(--font-size-title-1)',
-              fontWeight: '700'
-            }}>$</span>
+            <img 
+              src="/icons/categories/main-avatar.jpeg"
+              alt="Finance AI Logo"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                borderRadius: 'var(--radius-medium)'
+              }}
+            />
           </div>
           <h1 className="text-title-1" style={{ marginBottom: 'var(--space-2)' }}>
             Finance AI
