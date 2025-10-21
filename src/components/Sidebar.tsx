@@ -65,8 +65,27 @@ export default function Sidebar() {
           >
             <div className="p-6">
               <h2 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <span className="text-primary-foreground text-sm font-medium">F</span>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  background: 'linear-gradient(135deg, var(--color-blue) 0%, var(--color-blue-dark) 100%)',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '6px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }}>
+                  <img 
+                    src="/icons/categories/main-avatar.jpeg"
+                    alt="Finance AI"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      borderRadius: '6px'
+                    }}
+                  />
                 </div>
                 Finance AI
               </h2>
