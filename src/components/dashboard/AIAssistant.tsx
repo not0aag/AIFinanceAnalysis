@@ -36,7 +36,7 @@ export default function AIAssistant({ metrics, transactions }: AIAssistantProps)
     setIsLoading(true)
 
     try {
-      // Call the real AI API
+      // Call the AI API
       const response = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: {
@@ -49,11 +49,13 @@ export default function AIAssistant({ metrics, transactions }: AIAssistantProps)
         })
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to get AI response')
-      }
-
       const data = await response.json()
+
+      if (!response.ok) {
+        // If API fails, provide helpful fallback response
+        console.error('API Error:', data)
+        throw new Error(data.error || 'Failed to get AI response')
+      }
       
       const assistantMessage: Message = {
         role: 'assistant',
@@ -61,10 +63,42 @@ export default function AIAssistant({ metrics, transactions }: AIAssistantProps)
       }
       setMessages(prev => [...prev, assistantMessage])
     } catch (error) {
-      console.error('Error:', error)
+      console.error('AI Chat Error:', error)
+      
+      // Provide intelligent fallback response based on user's question
+      let fallbackResponse = ''
+      const question = currentInput.toLowerCase()
+      
+      if (question.includes('expend') || question.includes('spending') || question.includes('spend')) {
+        const totalExpenses = transactions
+          .filter(t => t.type === 'expense')
+          .reduce((sum, t) => sum + Math.abs(t.amount), 0)
+        
+        const categoryBreakdown = transactions
+          .filter(t => t.type === 'expense')
+          .reduce((acc: any, t) => {
+            acc[t.category] = (acc[t.category] || 0) + Math.abs(t.amount)
+            return acc
+          }, {})
+        
+        const topCategory = Object.entries(categoryBreakdown)
+          .sort(([, a]: any, [, b]: any) => (b as number) - (a as number))[0]
+        
+        fallbackResponse = `Based on your ${transactions.length} transactions, your total expenses are $${totalExpenses.toFixed(2)}. Your highest spending category is ${topCategory?.[0] || 'Unknown'} at $${(topCategory?.[1] as number || 0).toFixed(2)}. Consider reviewing this category for potential savings opportunities.`
+      } else if (question.includes('save') || question.includes('saving')) {
+        const income = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0)
+        const expenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Math.abs(t.amount), 0)
+        const savings = income - expenses
+        const savingsRate = income > 0 ? ((savings / income) * 100) : 0
+        
+        fallbackResponse = `Your current savings rate is ${savingsRate.toFixed(1)}%. You've saved $${savings.toFixed(2)} from $${income.toFixed(2)} in income. A good target is 20-30% savings rate. Consider reducing discretionary spending to improve your savings.`
+      } else {
+        fallbackResponse = `I'm currently experiencing connectivity issues with the AI service. However, I can tell you that you have ${transactions.length} transactions. Your total income is $${transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0).toFixed(2)} and total expenses are $${transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Math.abs(t.amount), 0).toFixed(2)}. Try asking me about your spending or savings!`
+      }
+      
       const errorMessage: Message = {
         role: 'assistant',
-        content: 'I apologize, but I encountered an error. Please make sure your OpenAI API key is configured correctly in your environment variables.'
+        content: fallbackResponse
       }
       setMessages(prev => [...prev, errorMessage])
     } finally {

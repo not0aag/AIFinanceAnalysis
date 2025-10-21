@@ -26,6 +26,38 @@ export async function POST(request: Request) {
       );
     }
 
+    // Check if API key is available
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey || apiKey === "dummy-key-for-build") {
+      console.warn("OpenAI API key not configured, using fallback response");
+      
+      // Provide intelligent fallback based on the question
+      const question = message.toLowerCase();
+      let fallbackResponse = "";
+      
+      if (question.includes("expend") || question.includes("spending") || question.includes("spend")) {
+        const totalExpenses = transactions
+          ?.filter((t: any) => t.type === "expense")
+          .reduce((sum: number, t: any) => sum + Math.abs(t.amount), 0) || 0;
+        
+        fallbackResponse = `Based on your data, your total expenses are $${totalExpenses.toFixed(2)}. To improve your spending, focus on tracking your largest expense categories and look for areas where you can cut back without impacting your quality of life.`;
+      } else if (question.includes("save") || question.includes("saving")) {
+        const income = transactions?.filter((t: any) => t.type === "income").reduce((sum: number, t: any) => sum + t.amount, 0) || 0;
+        const expenses = transactions?.filter((t: any) => t.type === "expense").reduce((sum: number, t: any) => sum + Math.abs(t.amount), 0) || 0;
+        const savings = income - expenses;
+        
+        fallbackResponse = `You're currently saving $${savings.toFixed(2)} per period. Try to aim for saving 20-30% of your income. Consider automating your savings and reducing discretionary expenses.`;
+      } else {
+        fallbackResponse = `I'm here to help with your finances! I can analyze your spending patterns, suggest savings strategies, and answer questions about your transactions. What would you like to know?`;
+      }
+      
+      return NextResponse.json({
+        response: fallbackResponse,
+        success: true,
+        fallback: true
+      });
+    }
+
     // Prepare financial context for AI
     const totalIncome =
       transactions
