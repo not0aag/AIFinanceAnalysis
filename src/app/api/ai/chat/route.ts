@@ -39,11 +39,18 @@ export async function POST(request: Request) {
       if (question.includes("last") && question.includes("transaction")) {
         if (transactions && transactions.length > 0) {
           const lastTx = transactions[transactions.length - 1];
-          const type = lastTx.type === 'income' ? 'income' : 'expense';
-          const sign = type === 'income' ? '+' : '-';
-          fallbackResponse = `Your last transaction was ${sign}$${Math.abs(lastTx.amount).toFixed(2)} for ${lastTx.name || lastTx.description || 'Unknown'} in the ${lastTx.category} category on ${new Date(lastTx.date).toLocaleDateString()}.`;
+          const type = lastTx.type === "income" ? "income" : "expense";
+          const sign = type === "income" ? "+" : "-";
+          fallbackResponse = `Your last transaction was ${sign}$${Math.abs(
+            lastTx.amount
+          ).toFixed(2)} for ${
+            lastTx.name || lastTx.description || "Unknown"
+          } in the ${lastTx.category} category on ${new Date(
+            lastTx.date
+          ).toLocaleDateString()}.`;
         } else {
-          fallbackResponse = "You don't have any transactions yet. Add your first transaction to get started!";
+          fallbackResponse =
+            "You don't have any transactions yet. Add your first transaction to get started!";
         }
       }
       // Check for improvement/savings queries
@@ -56,21 +63,32 @@ export async function POST(request: Request) {
           transactions
             ?.filter((t: any) => t.type === "expense")
             .reduce((sum: number, t: any) => sum + Math.abs(t.amount), 0) || 0;
-        
-        const categoryBreakdown = transactions
-          ?.filter((t: any) => t.type === "expense")
-          .reduce((acc: any, t: any) => {
-            acc[t.category] = (acc[t.category] || 0) + Math.abs(t.amount);
-            return acc;
-          }, {}) || {};
-        
-        const topCategory = Object.entries(categoryBreakdown)
-          .sort(([, a]: any, [, b]: any) => (b as number) - (a as number))[0];
-        
+
+        const categoryBreakdown =
+          transactions
+            ?.filter((t: any) => t.type === "expense")
+            .reduce((acc: any, t: any) => {
+              acc[t.category] = (acc[t.category] || 0) + Math.abs(t.amount);
+              return acc;
+            }, {}) || {};
+
+        const topCategory = Object.entries(categoryBreakdown).sort(
+          ([, a]: any, [, b]: any) => (b as number) - (a as number)
+        )[0];
+
         if (topCategory) {
-          fallbackResponse = `To improve your finances: Your highest spending is in ${topCategory[0]} ($${(topCategory[1] as number).toFixed(2)}). Consider: 1) Set a budget for this category, 2) Track each ${topCategory[0]} expense for a week, 3) Look for cheaper alternatives, 4) Reduce frequency by 20%. This could save you $${((topCategory[1] as number) * 0.2).toFixed(2)}/month!`;
+          fallbackResponse = `To improve your finances: Your highest spending is in ${
+            topCategory[0]
+          } ($${(topCategory[1] as number).toFixed(
+            2
+          )}). Consider: 1) Set a budget for this category, 2) Track each ${
+            topCategory[0]
+          } expense for a week, 3) Look for cheaper alternatives, 4) Reduce frequency by 20%. This could save you $${(
+            (topCategory[1] as number) * 0.2
+          ).toFixed(2)}/month!`;
         } else {
-          fallbackResponse = "To improve your finances: 1) Track all expenses daily, 2) Create category budgets, 3) Aim for 20% savings rate, 4) Review spending weekly, 5) Automate savings transfers.";
+          fallbackResponse =
+            "To improve your finances: 1) Track all expenses daily, 2) Create category budgets, 3) Aim for 20% savings rate, 4) Review spending weekly, 5) Automate savings transfers.";
         }
       }
       // Check for spending queries
@@ -87,7 +105,7 @@ export async function POST(request: Request) {
         fallbackResponse = `Based on your data, your total expenses are $${totalExpenses.toFixed(
           2
         )}. To improve your spending, focus on tracking your largest expense categories and look for areas where you can cut back without impacting your quality of life.`;
-      } 
+      }
       // Check for savings queries
       else if (question.includes("save") || question.includes("saving")) {
         const income =
@@ -106,15 +124,31 @@ export async function POST(request: Request) {
       }
       // Check for working/status queries
       else if (question.includes("working") || question.includes("are you")) {
-        fallbackResponse = `Yes, I'm working! I'm your AI financial assistant analyzing your ${transactions?.length || 0} transaction${transactions?.length === 1 ? '' : 's'}. I can help you understand your spending, find savings opportunities, and answer specific questions about your finances. Try asking: "What was my last transaction?" or "How can I improve my spending?"`;
+        fallbackResponse = `Yes, I'm working! I'm your AI financial assistant analyzing your ${
+          transactions?.length || 0
+        } transaction${
+          transactions?.length === 1 ? "" : "s"
+        }. I can help you understand your spending, find savings opportunities, and answer specific questions about your finances. Try asking: "What was my last transaction?" or "How can I improve my spending?"`;
       }
       // Generic helpful response
       else {
         const txCount = transactions?.length || 0;
-        const totalIncome = transactions?.filter((t: any) => t.type === "income").reduce((sum: number, t: any) => sum + t.amount, 0) || 0;
-        const totalExpenses = transactions?.filter((t: any) => t.type === "expense").reduce((sum: number, t: any) => sum + Math.abs(t.amount), 0) || 0;
-        
-        fallbackResponse = `I have ${txCount} transaction${txCount === 1 ? '' : 's'} to analyze. Your totals: Income $${totalIncome.toFixed(2)}, Expenses $${totalExpenses.toFixed(2)}. I can help you with: 📊 Spending analysis, 💰 Savings tips, 📈 Budget recommendations, or ❓ Answer specific questions about your transactions. What would you like to know?`;
+        const totalIncome =
+          transactions
+            ?.filter((t: any) => t.type === "income")
+            .reduce((sum: number, t: any) => sum + t.amount, 0) || 0;
+        const totalExpenses =
+          transactions
+            ?.filter((t: any) => t.type === "expense")
+            .reduce((sum: number, t: any) => sum + Math.abs(t.amount), 0) || 0;
+
+        fallbackResponse = `I have ${txCount} transaction${
+          txCount === 1 ? "" : "s"
+        } to analyze. Your totals: Income $${totalIncome.toFixed(
+          2
+        )}, Expenses $${totalExpenses.toFixed(
+          2
+        )}. I can help you with: 📊 Spending analysis, 💰 Savings tips, 📈 Budget recommendations, or ❓ Answer specific questions about your transactions. What would you like to know?`;
       }
 
       return NextResponse.json({
