@@ -1,13 +1,37 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Transaction } from '@/types/finance'
+import { Transaction as FullTransaction } from '@/types/finance'
 
-interface OnboardingProps {
-  onTransactionsAdded: (transactions: Transaction[]) => void
+interface Transaction {
+  id: number
+  name: string
+  amount: number
+  category: string
+  date: string
 }
 
-export default function Onboarding({ onTransactionsAdded }: OnboardingProps) {
+interface OnboardingProps {
+  onTransactionsAdded: (transactions: FullTransaction[]) => void
+  existingTransactions?: FullTransaction[]
+}
+
+// Category configuration with images
+const categoryConfig: Record<string, string> = {
+  'Food & Dining': '/icons/categories/coffee.jpeg',
+  'Shopping': '/icons/categories/shopping.jpeg',
+  'Housing': '/icons/categories/house.jpeg',
+  'Transportation': '/icons/categories/car.jpeg',
+  'Travel': '/icons/categories/travel.jpeg',
+  'Healthcare': '/icons/categories/health.jpeg',
+  'Utilities': '/icons/categories/power.jpeg',
+  'Entertainment': '/icons/categories/entertainment.jpeg',
+  'Income': '/icons/categories/Income.jpeg',
+  'Salary': '/icons/categories/Income.jpeg',
+  'Other': '/icons/categories/saving.jpeg'
+}
+
+export default function Onboarding({ onTransactionsAdded, existingTransactions }: OnboardingProps) {
   const [step, setStep] = useState(1)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [currentTransaction, setCurrentTransaction] = useState({
@@ -159,17 +183,11 @@ export default function Onboarding({ onTransactionsAdded }: OnboardingProps) {
     }
 
     const newTransaction: Transaction = {
-      id: Date.now().toString(),
-      userId: 'user-1',
+      id: Date.now(),
       name: currentTransaction.name,
       amount: amount,
       category: currentTransaction.category,
-      date: currentTransaction.date,
-      type: currentTransaction.type as 'income' | 'expense',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      tags: [],
-      isVerified: false
+      date: currentTransaction.date
     }
 
     const updatedTransactions = [...transactions, newTransaction]
@@ -190,7 +208,7 @@ export default function Onboarding({ onTransactionsAdded }: OnboardingProps) {
     }
   }
 
-  const removeTransaction = (id: string) => {
+  const removeTransaction = (id: number) => {
     const updatedTransactions = transactions.filter(t => t.id !== id)
     setTransactions(updatedTransactions)
     
@@ -205,7 +223,21 @@ export default function Onboarding({ onTransactionsAdded }: OnboardingProps) {
       alert('Please add at least one transaction to get started')
       return
     }
-    onTransactionsAdded(transactions)
+    
+    // Convert local transactions to full Transaction format
+    const fullTransactions: FullTransaction[] = transactions.map(t => ({
+      id: t.id.toString(),
+      userId: 'user-1',
+      name: t.name,
+      amount: t.amount,
+      category: t.category,
+      date: t.date,
+      type: t.amount > 0 ? 'income' : 'expense',
+      createdAt: t.date,
+      updatedAt: t.date
+    }))
+    
+    onTransactionsAdded(fullTransactions)
   }
 
   return (
@@ -602,8 +634,11 @@ export default function Onboarding({ onTransactionsAdded }: OnboardingProps) {
               </div>
               <div className="content-card-body">
                 <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
-                  {transactions.map((transaction) => (
-                    <div key={transaction.id} style={{
+                  {transactions.map((transaction, index) => {
+                    const iconSrc = categoryConfig[transaction.category] || categoryConfig['Other']
+                    
+                    return (
+                    <div key={`${transaction.id}-${index}`} style={{
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
@@ -613,12 +648,35 @@ export default function Onboarding({ onTransactionsAdded }: OnboardingProps) {
                       border: '1px solid var(--color-border)'
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                        <span style={{ 
-                          fontSize: 'var(--font-size-callout)',
-                          filter: 'grayscale(0)'
+                        <div style={{
+                          width: '40px',
+                          height: '40px',
+                          minWidth: '40px',
+                          minHeight: '40px',
+                          maxWidth: '40px',
+                          maxHeight: '40px',
+                          borderRadius: 'var(--radius-medium)',
+                          overflow: 'hidden',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
                         }}>
-                          {transaction.amount > 0 ? '💰' : '💸'}
-                        </span>
+                          <img 
+                            src={iconSrc}
+                            alt={transaction.category}
+                            width="40"
+                            height="40"
+                            style={{ 
+                              width: '40px', 
+                              height: '40px',
+                              maxWidth: '40px',
+                              maxHeight: '40px',
+                              objectFit: 'cover',
+                              display: 'block'
+                            }}
+                          />
+                        </div>
                         <div>
                           <span style={{ color: 'var(--color-text-primary)', fontWeight: '500' }}>{transaction.name}</span>
                           <div style={{ 
@@ -666,7 +724,8 @@ export default function Onboarding({ onTransactionsAdded }: OnboardingProps) {
                         </button>
                       </div>
                     </div>
-                  ))}
+                  )
+                })}
                 </div>
               </div>
             </div>
@@ -776,8 +835,11 @@ export default function Onboarding({ onTransactionsAdded }: OnboardingProps) {
               </div>
               <div className="content-card-body">
                 <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
-                  {transactions.map((transaction) => (
-                    <div key={transaction.id} style={{
+                  {transactions.map((transaction, index) => {
+                    const iconSrc = categoryConfig[transaction.category] || categoryConfig['Other']
+                    
+                    return (
+                    <div key={`${transaction.id}-review-${index}`} style={{
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
@@ -787,12 +849,35 @@ export default function Onboarding({ onTransactionsAdded }: OnboardingProps) {
                       border: '1px solid var(--color-border)'
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                        <span style={{ 
-                          fontSize: 'var(--font-size-callout)',
-                          filter: 'grayscale(0)'
+                        <div style={{
+                          width: '40px',
+                          height: '40px',
+                          minWidth: '40px',
+                          minHeight: '40px',
+                          maxWidth: '40px',
+                          maxHeight: '40px',
+                          borderRadius: 'var(--radius-medium)',
+                          overflow: 'hidden',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
                         }}>
-                          {transaction.amount > 0 ? '💰' : '💸'}
-                        </span>
+                          <img 
+                            src={iconSrc}
+                            alt={transaction.category}
+                            width="40"
+                            height="40"
+                            style={{ 
+                              width: '40px', 
+                              height: '40px',
+                              maxWidth: '40px',
+                              maxHeight: '40px',
+                              objectFit: 'cover',
+                              display: 'block'
+                            }}
+                          />
+                        </div>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                           <span style={{ color: 'var(--color-text-primary)', fontWeight: '500' }}>{transaction.name}</span>
                           <span style={{
@@ -840,7 +925,8 @@ export default function Onboarding({ onTransactionsAdded }: OnboardingProps) {
                         </button>
                       </div>
                     </div>
-                  ))}
+                  )
+                })}
                 </div>
                 
                 {transactions.length > 0 && (

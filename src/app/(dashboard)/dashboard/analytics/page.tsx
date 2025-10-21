@@ -8,7 +8,6 @@ import {
   generateFinancialReport,
   predictFutureSpending 
 } from '@/lib/analytics'
-import { initializeSampleData } from '@/lib/sample-data'
 import CategoryBreakdown from '@/components/analytics/CategoryBreakdown'
 import TrendAnalysis from '@/components/analytics/TrendAnalysis'
 import MerchantInsights from '@/components/analytics/MerchantInsights'
@@ -24,9 +23,6 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     const loadTransactions = () => {
-      // Initialize sample data if none exists
-      initializeSampleData()
-      
       const savedTransactions = localStorage.getItem('finance-ai-transactions')
       
       if (savedTransactions) {
@@ -34,11 +30,8 @@ export default function AnalyticsPage() {
         const typedTransactions: Transaction[] = parsed.map((t: any) => ({
           ...t,
           id: t.id?.toString() || Date.now().toString(),
-          userId: t.userId || 'user-1',
-          // Preserve the original type and amount as they are correctly set
-          type: t.type || (t.amount > 0 ? 'income' : 'expense'),
-          // Keep the original amount - sample data already has correct signs
-          amount: t.amount,
+          userId: 'user-1',
+          type: t.amount > 0 ? 'income' : 'expense',
           createdAt: t.createdAt || t.date,
           updatedAt: t.updatedAt || t.date
         }))
@@ -144,269 +137,200 @@ export default function AnalyticsPage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
-      {/* Enhanced Header */}
-      <div className="page-header" style={{ marginBottom: 'var(--space-8)' }}>
-        <div style={{ marginBottom: 'var(--space-6)' }}>
+      {/* Enhanced Header with Controls */}
+      <div className="page-header" style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'flex-start',
+        flexWrap: 'wrap',
+        gap: 'var(--space-4)',
+        marginBottom: 'var(--space-12)'
+      }}>
+        <div>
           <h1 className="page-title">Analytics Dashboard</h1>
           <p className="page-subtitle">
-            Deep insights into your financial patterns and trends
+            {analyticsData.report.period.start} - {analyticsData.report.period.end}
           </p>
         </div>
         
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 'var(--space-4)'
-        }}>
-          <div style={{ 
-            background: 'var(--color-surface-secondary)',
-            padding: 'var(--space-3) var(--space-4)',
-            borderRadius: 'var(--radius-medium)',
-            border: '1px solid var(--color-border)'
-          }}>
-            <span className="text-caption" style={{ color: 'var(--color-text-secondary)' }}>
-              {analyticsData.report.period.start} - {analyticsData.report.period.end}
-            </span>
-          </div>
+        <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'center' }}>
+          {/* Period Selector */}
+          <select
+            className="input"
+            value={selectedPeriod}
+            onChange={(e) => setSelectedPeriod(e.target.value as any)}
+            style={{ 
+              minWidth: '150px',
+              padding: 'var(--space-2) var(--space-4)'
+            }}
+          >
+            <option value="week">Past Week</option>
+            <option value="month">Past Month</option>
+            <option value="quarter">Past Quarter</option>
+            <option value="year">Past Year</option>
+          </select>
           
-          <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
-            <select
-              className="input"
-              value={selectedPeriod}
-              onChange={(e) => setSelectedPeriod(e.target.value as any)}
-              style={{ 
-                minWidth: '150px',
-                padding: 'var(--space-2) var(--space-4)',
-                background: 'var(--color-surface)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-medium)'
-              }}
-            >
-              <option value="week">Past Week</option>
-              <option value="month">Past Month</option>
-              <option value="quarter">Past Quarter</option>
-              <option value="year">Past Year</option>
-            </select>
-            
-            <motion.button
-              className="btn btn-secondary"
-              onClick={() => setShowExport(true)}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              📥 Export Report
-            </motion.button>
-          </div>
+          {/* Export Button */}
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowExport(true)}
+            style={{ 
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--space-2)'
+            }}
+          >
+            <span>📥</span>
+            Export Report
+          </button>
         </div>
       </div>
 
-      {/* Key Metrics */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        style={{ marginBottom: 'var(--space-8)' }}
-      >
-        <div style={{ 
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: 'var(--space-6)'
-        }}>
-          <div className="content-card">
-            <div className="content-card-body">
-              <div style={{ 
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                marginBottom: 'var(--space-4)'
-              }}>
-                <div style={{
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: 'var(--radius-medium)',
-                  background: 'linear-gradient(135deg, var(--color-green) 0%, var(--color-green-dark) 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '24px'
-                }}>
-                  📈
-                </div>
-                <div style={{
-                  padding: 'var(--space-1) var(--space-3)',
-                  borderRadius: 'var(--radius-small)',
-                  background: analyticsData.report.income.growth >= 0 ? 'var(--color-green-light)' : 'var(--color-red-light)',
-                  color: analyticsData.report.income.growth >= 0 ? 'var(--color-green-dark)' : 'var(--color-red-dark)',
-                  fontSize: 'var(--font-size-caption)',
-                  fontWeight: '600'
-                }}>
-                  {analyticsData.report.income.growth >= 0 ? '+' : ''}{analyticsData.report.income.growth.toFixed(1)}%
-                </div>
-              </div>
-              <div style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-caption)', marginBottom: 'var(--space-2)' }}>
-                Total Income
-              </div>
-              <div style={{ fontSize: 'var(--font-size-title-2)', fontWeight: '700', color: 'var(--color-text-primary)', marginBottom: 'var(--space-1)' }}>
-                ${analyticsData.report.income.total.toLocaleString()}
-              </div>
-              <div style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-caption)' }}>
-                vs previous {selectedPeriod}
-              </div>
+      {/* Key Metrics Summary */}
+      <div className="stats-grid" style={{ marginBottom: 'var(--space-12)' }}>
+        <motion.div 
+          className="stat-card"
+          whileHover={{ scale: 1.02 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <div className="stat-header">
+            <div className="stat-icon green">📈</div>
+            <div className={`stat-badge ${analyticsData.report.income.growth >= 0 ? 'positive' : 'negative'}`}>
+              {analyticsData.report.income.growth >= 0 ? '+' : ''}{analyticsData.report.income.growth.toFixed(1)}%
             </div>
           </div>
+          <div className="stat-label">Total Income</div>
+          <div className="stat-value">${analyticsData.report.income.total.toLocaleString()}</div>
+          <div className="stat-change positive">
+            vs previous {selectedPeriod}
+          </div>
+        </motion.div>
 
-          <div className="content-card">
-            <div className="content-card-body">
-              <div style={{ 
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                marginBottom: 'var(--space-4)'
-              }}>
-                <div style={{
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: 'var(--radius-medium)',
-                  background: 'linear-gradient(135deg, var(--color-red) 0%, var(--color-red-dark) 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '24px'
-                }}>
-                  📉
-                </div>
-                <div style={{
-                  padding: 'var(--space-1) var(--space-3)',
-                  borderRadius: 'var(--radius-small)',
-                  background: 'var(--color-orange-light)',
-                  color: 'var(--color-orange-dark)',
-                  fontSize: 'var(--font-size-caption)',
-                  fontWeight: '600'
-                }}>
-                  {((analyticsData.report.expenses.total / analyticsData.report.income.total) * 100).toFixed(0)}%
-                </div>
-              </div>
-              <div style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-caption)', marginBottom: 'var(--space-2)' }}>
-                Total Expenses
-              </div>
-              <div style={{ fontSize: 'var(--font-size-title-2)', fontWeight: '700', color: 'var(--color-text-primary)', marginBottom: 'var(--space-1)' }}>
-                ${analyticsData.report.expenses.total.toLocaleString()}
-              </div>
-              <div style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-caption)' }}>
-                of total income
-              </div>
+        <motion.div 
+          className="stat-card"
+          whileHover={{ scale: 1.02 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <div className="stat-header">
+            <div className="stat-icon red">📉</div>
+            <div className="stat-badge negative">
+              {((analyticsData.report.expenses.total / analyticsData.report.income.total) * 100).toFixed(0)}%
             </div>
           </div>
+          <div className="stat-label">Total Expenses</div>
+          <div className="stat-value">${analyticsData.report.expenses.total.toLocaleString()}</div>
+          <div className="stat-change">
+            of total income
+          </div>
+        </motion.div>
 
-          <div className="content-card">
-            <div className="content-card-body">
-              <div style={{ 
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                marginBottom: 'var(--space-4)'
-              }}>
-                <div style={{
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: 'var(--radius-medium)',
-                  background: 'linear-gradient(135deg, var(--color-blue) 0%, var(--color-blue-dark) 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '24px'
-                }}>
-                  💰
-                </div>
-                <div style={{
-                  padding: 'var(--space-1) var(--space-3)',
-                  borderRadius: 'var(--radius-small)',
-                  background: analyticsData.report.savings.rate >= 20 ? 'var(--color-green-light)' : 'var(--color-orange-light)',
-                  color: analyticsData.report.savings.rate >= 20 ? 'var(--color-green-dark)' : 'var(--color-orange-dark)',
-                  fontSize: 'var(--font-size-caption)',
-                  fontWeight: '600'
-                }}>
-                  {analyticsData.report.savings.rate.toFixed(0)}%
-                </div>
-              </div>
-              <div style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-caption)', marginBottom: 'var(--space-2)' }}>
-                Savings Rate
-              </div>
-              <div style={{ fontSize: 'var(--font-size-title-2)', fontWeight: '700', color: 'var(--color-text-primary)', marginBottom: 'var(--space-1)' }}>
-                ${analyticsData.report.savings.amount.toLocaleString()}
-              </div>
-              <div style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-caption)' }}>
-                {analyticsData.report.savings.rate >= 20 ? 'Excellent!' : 'Room to improve'}
-              </div>
+        <motion.div 
+          className="stat-card"
+          whileHover={{ scale: 1.02 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <div className="stat-header">
+            <div className="stat-icon blue">💰</div>
+            <div className={`stat-badge ${analyticsData.report.savings.rate >= 20 ? 'positive' : 'negative'}`}>
+              {analyticsData.report.savings.rate.toFixed(0)}%
             </div>
           </div>
-        </div>
-      </motion.div>
+          <div className="stat-label">Savings Rate</div>
+          <div className="stat-value">${analyticsData.report.savings.amount.toLocaleString()}</div>
+          <div className="stat-change">
+            {analyticsData.report.savings.rate >= 20 ? 'Excellent!' : 'Room to improve'}
+          </div>
+        </motion.div>
 
-      {/* Analytics Components */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.2 }}
-      >
-        <div style={{ 
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-          gap: 'var(--space-8)'
-        }}>
-          <div className="content-card">
-            <div className="content-card-header">
-              <h3 className="content-card-title">Spending by Category</h3>
-            </div>
-            <div className="content-card-body">
-              <CategoryBreakdown
-                data={analyticsData.report.expenses.byCategory}
-                total={analyticsData.report.expenses.total}
-                onCategorySelect={setSelectedCategory}
-                selectedCategory={selectedCategory}
-              />
+        <motion.div 
+          className="stat-card"
+          whileHover={{ scale: 1.02 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <div className="stat-header">
+            <div className="stat-icon purple">🎯</div>
+            <div className="stat-badge positive">
+              {analyticsData.predictions.accuracy.toFixed(0)}%
             </div>
           </div>
+          <div className="stat-label">Prediction Accuracy</div>
+          <div className="stat-value">${analyticsData.predictions.nextMonth.toLocaleString()}</div>
+          <div className="stat-change">
+            projected next month
+          </div>
+        </motion.div>
+      </div>
 
-          <div className="content-card">
-            <div className="content-card-header">
-              <h3 className="content-card-title">Spending Trends</h3>
-            </div>
-            <div className="content-card-body">
-              <TrendAnalysis
-                patterns={analyticsData.patterns}
-                selectedCategory={selectedCategory}
-              />
-            </div>
-          </div>
+      {/* Main Analytics Content */}
+      <div className="grid" style={{ 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+        gap: 'var(--space-8)'
+      }}>
+        {/* Category Breakdown */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.5 }}
+        >
+          <CategoryBreakdown
+            data={analyticsData.report.expenses.byCategory}
+            total={analyticsData.report.expenses.total}
+            onCategorySelect={setSelectedCategory}
+            selectedCategory={selectedCategory}
+          />
+        </motion.div>
 
-          <div className="content-card">
-            <div className="content-card-header">
-              <h3 className="content-card-title">Top Merchants</h3>
-            </div>
-            <div className="content-card-body">
-              <MerchantInsights
-                merchants={analyticsData.report.expenses.topMerchants}
-                transactions={transactions}
-              />
-            </div>
-          </div>
+        {/* Trend Analysis */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.6 }}
+        >
+          <TrendAnalysis
+            patterns={analyticsData.patterns}
+            selectedCategory={selectedCategory}
+          />
+        </motion.div>
+      </div>
 
-          <div className="content-card">
-            <div className="content-card-header">
-              <h3 className="content-card-title">Financial Predictions</h3>
-            </div>
-            <div className="content-card-body">
-              <PredictiveAnalytics
-                predictions={analyticsData.predictions}
-                patterns={analyticsData.patterns}
-              />
-            </div>
-          </div>
-        </div>
-      </motion.div>
+      {/* Additional Insights Row */}
+      <div className="grid" style={{ 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
+        gap: 'var(--space-8)',
+        marginTop: 'var(--space-8)'
+      }}>
+        {/* Merchant Insights */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+        >
+          <MerchantInsights
+            merchants={analyticsData.report.expenses.topMerchants}
+            transactions={transactions}
+          />
+        </motion.div>
+
+        {/* Predictive Analytics */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+        >
+          <PredictiveAnalytics
+            predictions={analyticsData.predictions}
+            patterns={analyticsData.patterns}
+          />
+        </motion.div>
+      </div>
 
       {/* Export Modal */}
       {showExport && (

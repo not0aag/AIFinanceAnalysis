@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Logo } from '@/components/Logo'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -53,14 +52,24 @@ export default function LoginPage() {
   return (
     <div className="login-layout">
       <div className="login-card fade-in">
-        {/* Enhanced Header with Logo */}
+        {/* Clean Header */}
         <div style={{ textAlign: 'center', marginBottom: 'var(--space-12)' }}>
-          <div style={{ 
-            marginBottom: 'var(--space-6)',
+          <div style={{
+            width: '72px',
+            height: '72px',
+            background: 'linear-gradient(135deg, var(--color-blue) 0%, var(--color-blue-dark) 100%)',
+            borderRadius: 'var(--radius-large)',
             display: 'flex',
-            justifyContent: 'center'
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto var(--space-6) auto',
+            boxShadow: 'var(--shadow-medium)'
           }}>
-            <Logo size="large" showText={false} />
+            <span style={{
+              color: 'white',
+              fontSize: 'var(--font-size-title-1)',
+              fontWeight: '700'
+            }}>$</span>
           </div>
           <h1 className="text-title-1" style={{ marginBottom: 'var(--space-2)' }}>
             Finance AI

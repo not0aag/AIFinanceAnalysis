@@ -10,8 +10,48 @@ interface ExportReportProps {
 
 export default function ExportReport({ report, onClose }: ExportReportProps) {
   const handleExport = (format: 'pdf' | 'csv' | 'json') => {
-    // Implement export logic
-    console.log(`Exporting as ${format}`)
+    if (format === 'json') {
+      // Export as JSON
+      const dataStr = JSON.stringify(report, null, 2)
+      const blob = new Blob([dataStr], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `financial-report-${new Date().toISOString().split('T')[0]}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } else if (format === 'csv') {
+      // Export as CSV
+      let csvContent = 'Category,Amount\n'
+      
+      // Export expenses by category
+      csvContent += '\nExpenses:\n'
+      Object.entries(report.expenses.byCategory).forEach(([category, amount]) => {
+        csvContent += `${category},${amount}\n`
+      })
+      
+      // Export income by category
+      csvContent += '\nIncome:\n'
+      Object.entries(report.income.byCategory).forEach(([category, amount]) => {
+        csvContent += `${category},${amount}\n`
+      })
+      
+      const blob = new Blob([csvContent], { type: 'text/csv' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `financial-report-${new Date().toISOString().split('T')[0]}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } else if (format === 'pdf') {
+      // For PDF, we'd need a library like jsPDF
+      // For now, just show a message
+      alert('PDF export requires additional setup. Use JSON or CSV for now.')
+    }
     onClose()
   }
 

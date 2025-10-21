@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Transaction, AIInsight } from '@/types/finance'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency } from '@/lib/finance-utils'
 
 interface AIFinancialAnalystProps {
   transactions: Transaction[]
@@ -24,21 +24,11 @@ export default function AIFinancialAnalyst({
   const [expandedInsights, setExpandedInsights] = useState<Set<string>>(new Set())
   const [processingStage, setProcessingStage] = useState('')
   const retryCount = useRef(0)
-  const lastAnalyzed = useRef<string>('')
   const maxRetries = 3
 
   useEffect(() => {
     const analyzeFinances = async () => {
       if (transactions.length === 0) {
-        setLoading(false)
-        return
-      }
-
-      // Create a unique key for this analysis
-      const analysisKey = `${transactions.length}-${monthlyIncome}-${JSON.stringify(financialGoals)}`
-      
-      // Prevent running if we already analyzed this exact data
-      if (analysisData && lastAnalyzed.current === analysisKey) {
         setLoading(false)
         return
       }
@@ -61,28 +51,34 @@ export default function AIFinancialAnalyst({
           await new Promise(resolve => setTimeout(resolve, 500))
         }
 
+        console.log('Sending to API:', {
+          transactionsCount: transactions.length,
+          monthlyIncome,
+          financialGoalsCount: financialGoals?.length || 0,
+          sampleTransaction: transactions[0]
+        })
+
         const response = await fetch('/api/ai/financial-analysis', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            transactions: transactions.map(t => ({
-              ...t,
-              type: t.amount > 0 ? 'income' : 'expense'
-            })),
+            transactions,
             monthlyIncome,
             financialGoals
           })
         })
 
         if (!response.ok) {
-          throw new Error(`Analysis failed: ${response.statusText}`)
+          const errorData = await response.json().catch(() => ({}))
+          const errorMessage = errorData.error || response.statusText
+          console.error('API Error:', errorData)
+          throw new Error(`Analysis failed: ${errorMessage}`)
         }
 
         const data = await response.json()
         setAnalysisData(data)
-        lastAnalyzed.current = analysisKey // Store the analysis key to prevent re-analysis
         
         // Generate AI insights for storage
         if (onInsightGenerated && data.insights) {
@@ -121,7 +117,7 @@ export default function AIFinancialAnalyst({
     }
 
     analyzeFinances()
-  }, [transactions.length, monthlyIncome]) // Remove onInsightGenerated and financialGoals to prevent loops
+  }, []) // Only run once on mount - we'll add a refresh button for updates
 
   const toggleInsight = (insightId: string) => {
     setExpandedInsights(prev => {
@@ -341,11 +337,13 @@ export default function AIFinancialAnalyst({
                       Savings Rate
                     </p>
                     <p className="text-title-3" style={{ 
-                      color: (monthlyIncome - insights.nextMonthPrediction?.expectedExpenses || 0) / monthlyIncome > 0.2 
+                      color: monthlyIncome > 0 && (monthlyIncome - (insights.nextMonthPrediction?.expectedExpenses || 0)) / monthlyIncome > 0.2 
                         ? 'var(--color-green)' 
                         : 'var(--color-orange)'
                     }}>
-                      {((monthlyIncome - (insights.nextMonthPrediction?.expectedExpenses || 0)) / monthlyIncome * 100).toFixed(0)}%
+                      {monthlyIncome > 0 
+                        ? `${((monthlyIncome - (insights.nextMonthPrediction?.expectedExpenses || 0)) / monthlyIncome * 100).toFixed(1)}%`
+                        : 'N/A'}
                     </p>
                   </div>
                   <div>
@@ -353,7 +351,7 @@ export default function AIFinancialAnalyst({
                       Expected Next Month
                     </p>
                     <p className="text-title-3">
-                      {formatCurrency(insights.nextMonthPrediction?.expectedExpenses || 0)}
+                      {formatCurrency(Math.abs(insights.nextMonthPrediction?.expectedExpenses || 0))}
                     </p>
                   </div>
                   <div>
@@ -361,7 +359,7 @@ export default function AIFinancialAnalyst({
                       Savings Potential
                     </p>
                     <p className="text-title-3" style={{ color: 'var(--color-green)' }}>
-                      {formatCurrency(insights.nextMonthPrediction?.savingsPotential || 0)}
+                      {formatCurrency(Math.abs(insights.nextMonthPrediction?.savingsPotential || 0))}
                     </p>
                   </div>
                 </div>
@@ -614,10 +612,16 @@ export default function AIFinancialAnalyst({
                   }}>
                     <div>
                       <h5 className="text-headline" style={{ marginBottom: 'var(--space-2)' }}>
-                        {anomaly.transaction.name}
+                        {anomaly.transaction?.name || 'Unknown Transaction'}
                       </h5>
                       <p className="text-caption-1">
-                        {new Date(anomaly.transaction.date).toLocaleDateString()} • {anomaly.transaction.category}
+                        {anomaly.transaction?.date 
+                          ? new Date(anomaly.transaction.date).toLocaleDateString('en-US', { 
+                              month: 'short', 
+                              day: 'numeric', 
+                              year: 'numeric' 
+                            })
+                          : 'No date'} • {anomaly.transaction?.category || 'Uncategorized'}
                       </p>
                     </div>
                     <div style={{
@@ -625,7 +629,7 @@ export default function AIFinancialAnalyst({
                       fontWeight: '700',
                       color: 'var(--color-text-primary)'
                     }}>
-                      {formatCurrency(Math.abs(anomaly.transaction.amount))}
+                      {formatCurrency(Math.abs(anomaly.transaction?.amount || 0))}
                     </div>
                   </div>
                   

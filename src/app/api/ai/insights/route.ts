@@ -14,7 +14,16 @@ export async function POST(request: Request) {
     });
 
     // Generate AI insight
-    const content = await generateInsight(transactions);
+    const userProfile = {
+      monthlyIncome: 5000, // Default value - should be fetched from user profile
+      monthlyExpenses: transactions
+        .filter((t: any) => t.amount < 0)
+        .reduce((sum: number, t: any) => sum + Math.abs(t.amount), 0),
+      savingsGoal: 1000,
+      riskTolerance: "moderate" as const,
+    };
+
+    const content = await generateInsight(transactions, userProfile);
 
     // Save insight
     const insight = await prisma.insight.create({

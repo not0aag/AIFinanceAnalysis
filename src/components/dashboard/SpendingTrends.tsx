@@ -32,46 +32,18 @@ export default function SpendingTrends({ transactions, period }: SpendingTrendsP
   const [showIncome, setShowIncome] = useState(true)
   const [showExpenses, setShowExpenses] = useState(true)
 
-  // Filter transactions based on period first
-  const filteredTransactions = useMemo(() => {
-    const now = new Date()
-    return transactions.filter(transaction => {
-      const transactionDate = new Date(transaction.date + 'T00:00:00') // Ensure consistent parsing
-      
-      switch (period) {
-        case 'week':
-          // Show last 7 days
-          const weekAgo = new Date(now)
-          weekAgo.setDate(weekAgo.getDate() - 7)
-          return transactionDate >= weekAgo
-        case 'month':
-          // Show current month - use string comparison for reliability
-          const currentMonth = now.toISOString().slice(0, 7) // "2025-08"
-          const transactionMonth = transaction.date.slice(0, 7) // "2025-08"
-          return transactionMonth === currentMonth
-        case 'year':
-          // Show current year - use string comparison for reliability
-          const currentYear = now.getFullYear().toString()
-          const transactionYear = transaction.date.slice(0, 4)
-          return transactionYear === currentYear
-        default:
-          return true
-      }
-    })
-  }, [transactions, period])
-
   const chartData = useMemo(() => {
     // Group transactions by time period
     const groupedData = new Map<string, { income: number; expenses: number; date: Date }>()
     
-    filteredTransactions.forEach(transaction => {
+    transactions.forEach(transaction => {
       const date = new Date(transaction.date)
       let key: string
       
       switch (period) {
         case 'week':
           // Group by day for week view
-          key = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+          key = date.toISOString().split('T')[0]
           break
         case 'month':
           // Group by week for month view
@@ -97,7 +69,7 @@ export default function SpendingTrends({ transactions, period }: SpendingTrendsP
     })
     
     // Convert to array and sort by date
-    const result = Array.from(groupedData.entries())
+    return Array.from(groupedData.entries())
       .map(([label, data]) => ({
         label,
         income: data.income,
@@ -106,9 +78,7 @@ export default function SpendingTrends({ transactions, period }: SpendingTrendsP
         date: data.date
       }))
       .sort((a, b) => a.date.getTime() - b.date.getTime())
-    
-    return result
-  }, [filteredTransactions, period])
+  }, [transactions, period])
 
   const pieData = useMemo(() => {
     const categoryTotals = new Map<string, number>()
@@ -161,21 +131,9 @@ export default function SpendingTrends({ transactions, period }: SpendingTrendsP
     <div className="content-card">
       <div className="content-card-header">
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-            <h3 className="content-card-title">Spending Trends</h3>
-            <span style={{
-              padding: '2px 8px',
-              backgroundColor: 'var(--color-fill-primary)',
-              color: 'var(--color-label-primary)',
-              borderRadius: '12px',
-              fontSize: 'var(--font-size-caption-2)',
-              fontWeight: '500'
-            }}>
-              {filteredTransactions.length} transactions
-            </span>
-          </div>
+          <h3 className="content-card-title">Spending Trends</h3>
           <p className="content-card-subtitle">
-            {period === 'week' ? 'Last 7 days' : period === 'month' ? 'Current month (August 2025)' : 'Current year (2025)'} • {period === 'week' ? 'Daily' : period === 'month' ? 'Weekly' : 'Monthly'} breakdown
+            {period === 'week' ? 'Daily' : period === 'month' ? 'Weekly' : 'Monthly'} breakdown
           </p>
         </div>
         
@@ -245,44 +203,6 @@ export default function SpendingTrends({ transactions, period }: SpendingTrendsP
       </div>
       
       <div className="content-card-body">
-        {filteredTransactions.length === 0 ? (
-          // Empty state when no transactions
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: '300px',
-            textAlign: 'center',
-            gap: 'var(--space-4)'
-          }}>
-            <div style={{
-              fontSize: '48px',
-              opacity: 0.5
-            }}>
-              📊
-            </div>
-            <div>
-              <h4 style={{
-                margin: 0,
-                marginBottom: 'var(--space-2)',
-                fontSize: 'var(--font-size-headline)',
-                fontWeight: '600',
-                color: 'var(--color-text-primary)'
-              }}>
-                No transactions yet
-              </h4>
-              <p style={{
-                margin: 0,
-                fontSize: 'var(--font-size-body)',
-                color: 'var(--color-text-secondary)'
-              }}>
-                Add your first transaction to see spending trends and analytics
-              </p>
-            </div>
-          </div>
-        ) : (
-          <>
         <motion.div 
           style={{ height: '300px' }}
           key={chartType}
@@ -413,25 +333,11 @@ export default function SpendingTrends({ transactions, period }: SpendingTrendsP
             <p className="text-title-3" style={{ color: 'var(--color-green)' }}>
               {formatCurrency(chartData.reduce((sum, d) => sum + d.income, 0))}
             </p>
-            <p style={{ 
-              fontSize: 'var(--font-size-caption-2)', 
-              color: 'var(--color-text-tertiary)',
-              marginTop: '2px' 
-            }}>
-              from {filteredTransactions.filter(t => t.type === 'income').length} income transactions
-            </p>
           </div>
           <div style={{ textAlign: 'center' }}>
             <p className="text-caption-1">Total Expenses</p>
             <p className="text-title-3" style={{ color: 'var(--color-red)' }}>
               {formatCurrency(chartData.reduce((sum, d) => sum + d.expenses, 0))}
-            </p>
-            <p style={{ 
-              fontSize: 'var(--font-size-caption-2)', 
-              color: 'var(--color-text-tertiary)',
-              marginTop: '2px' 
-            }}>
-              from {filteredTransactions.filter(t => t.type === 'expense').length} expense transactions
             </p>
           </div>
           <div style={{ textAlign: 'center' }}>
@@ -443,17 +349,8 @@ export default function SpendingTrends({ transactions, period }: SpendingTrendsP
             }}>
               {formatCurrency(chartData.reduce((sum, d) => sum + d.net, 0))}
             </p>
-            <p style={{ 
-              fontSize: 'var(--font-size-caption-2)', 
-              color: 'var(--color-text-tertiary)',
-              marginTop: '2px' 
-            }}>
-              calculated from user data
-            </p>
           </div>
         </div>
-        </>
-        )}
       </div>
     </div>
   )

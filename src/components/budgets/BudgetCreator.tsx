@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Budget } from '@/types/finance'
 
@@ -12,65 +12,75 @@ interface BudgetCreatorProps {
   onClose: () => void
 }
 
+const CATEGORIES = [
+  'Food & Dining',
+  'Transportation',
+  'Shopping',
+  'Housing',
+  'Entertainment',
+  'Healthcare',
+  'Bills & Utilities',
+  'Education',
+  'Travel',
+  'Other'
+]
+
 export default function BudgetCreator({ budget, existingBudgets, transactions, onSave, onClose }: BudgetCreatorProps) {
   const [formData, setFormData] = useState({
     category: budget?.category || '',
     allocated: budget?.allocated || 0,
     period: budget?.period || 'monthly',
-    startDate: budget?.startDate || new Date().toISOString().split('T')[0]
+    notifications: budget?.notifications || { enabled: true, threshold: 80 },
+    rollover: budget?.rollover || false
   })
 
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [errors, setErrors] = useState<{ [key: string]: string }>({})
 
-  // Get unique categories from transactions
-  const categories = Array.from(new Set(
-    transactions
-      .filter(t => t.type === 'expense')
-      .map(t => t.category)
-  )).sort()
-
-  const commonCategories = [
-    'Housing', 'Food & Dining', 'Transportation', 'Shopping', 'Entertainment',
-    'Healthcare', 'Utilities', 'Education', 'Travel', 'Subscriptions'
-  ]
-
-  const allCategories = Array.from(new Set([...commonCategories, ...categories]))
+  // Calculate suggested budget based on past spending
+  const suggestedAmount = formData.category 
+    ? Math.ceil(
+        transactions
+          .filter(t => t.category === formData.category && t.type === 'expense')
+          .reduce((sum, t) => sum + Math.abs(t.amount), 0) / 3 * 1.2
+      )
+    : 0
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Validation
-    const newErrors: Record<string, string> = {}
+    const newErrors: { [key: string]: string } = {}
     
-    if (!formData.category.trim()) {
-      newErrors.category = 'Category is required'
+    if (!formData.category) {
+      newErrors.category = 'Please select a category'
     }
     
     if (formData.allocated <= 0) {
-      newErrors.allocated = 'Budget amount must be greater than 0'
+      newErrors.allocated = 'Amount must be greater than 0'
     }
-
-    // Check if category already exists (for new budgets)
-    if (!budget && existingBudgets.some(b => b.category.toLowerCase() === formData.category.toLowerCase())) {
-      newErrors.category = 'A budget for this category already exists'
+    
+    // Check for duplicate category in same period
+    const duplicate = existingBudgets.find(
+      b => b.category === formData.category && 
+           b.period === formData.period && 
+           b.id !== budget?.id
+    )
+    
+    if (duplicate) {
+      newErrors.category = `You already have a ${formData.period} budget for ${formData.category}`
     }
-
+    
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
       return
     }
-
-    // Create budget object
+    
+    const now = new Date()
     const budgetData = {
       ...formData,
-      id: budget?.id || Date.now().toString(),
-      userId: 'user-1',
-      spent: budget?.spent || 0,
-      endDate: budget?.endDate || '',
-      notifications: budget?.notifications || { enabled: true, threshold: 80 },
-      rollover: budget?.rollover || false
+      startDate: budget?.startDate || now.toISOString(),
+      endDate: budget?.endDate || new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
     }
-
+    
     onSave(budgetData)
   }
 
@@ -82,123 +92,216 @@ export default function BudgetCreator({ budget, existingBudgets, transactions, o
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        style={{
-          width: '90%',
-          maxWidth: '500px',
-          maxHeight: '90vh',
-          overflow: 'auto'
-        }}
+        style={{ maxWidth: '500px', width: '90%' }}
       >
-        <div className="modal-header">
-          <h2>{budget ? 'Edit Budget' : 'Create Budget'}</h2>
-          <button onClick={onClose} className="modal-close">×</button>
+        <div className="content-card-header">
+          <h2 className="content-card-title">
+            {budget ? 'Edit Budget' : 'Create Budget'}
+          </h2>
+          <button 
+            onClick={onClose} 
+            className="modal-close"
+            style={{
+              position: 'absolute',
+              right: 'var(--space-6)',
+              top: 'var(--space-6)',
+              background: 'none',
+              border: 'none',
+              fontSize: '32px',
+              cursor: 'pointer',
+              color: 'var(--color-text-secondary)',
+              lineHeight: 1
+            }}
+          >
+            ×
+          </button>
         </div>
-
-        <form onSubmit={handleSubmit} className="modal-body">
-          {/* Category Selection */}
-          <div className="form-group">
-            <label htmlFor="category">Category</label>
-            <select
-              id="category"
-              value={allCategories.includes(formData.category) ? formData.category : 'custom'}
-              onChange={(e) => {
-                if (e.target.value === 'custom') {
-                  setFormData(prev => ({ ...prev, category: '' }))
-                } else {
-                  setFormData(prev => ({ ...prev, category: e.target.value }))
-                }
-                setErrors(prev => ({ ...prev, category: '' }))
-              }}
-              className={`form-control ${errors.category ? 'error' : ''}`}
-              required
-            >
-              <option value="">Select a category</option>
-              {allCategories.map(category => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-              <option value="custom">➕ Add custom category</option>
-            </select>
-            {errors.category && (
-              <span className="error-message">{errors.category}</span>
-            )}
-          </div>
-
-          {/* Custom Category Input */}
-          {(!allCategories.includes(formData.category) || formData.category === '') && (
-            <div className="form-group">
-              <label htmlFor="customCategory">Custom Category</label>
-              <input
-                id="customCategory"
-                type="text"
+        
+        <form onSubmit={handleSubmit} className="content-card-body">
+          <div style={{ display: 'grid', gap: 'var(--space-6)' }}>
+            {/* Category Selection */}
+            <div>
+              <label className="text-callout" style={{ 
+                display: 'block', 
+                marginBottom: 'var(--space-2)',
+                fontWeight: '600'
+              }}>
+                Category *
+              </label>
+              <select
                 value={formData.category}
                 onChange={(e) => {
-                  setFormData(prev => ({ ...prev, category: e.target.value }))
-                  setErrors(prev => ({ ...prev, category: '' }))
+                  setFormData({ ...formData, category: e.target.value })
+                  setErrors({ ...errors, category: '' })
                 }}
-                className="form-control"
-                placeholder="Enter category name (e.g., Pet Care, Hobbies)"
-                required={!allCategories.includes(formData.category)}
+                className="input"
+                style={{
+                  width: '100%',
+                  padding: 'var(--space-3)',
+                  borderRadius: 'var(--radius-medium)',
+                  border: `1px solid ${errors.category ? 'var(--color-red)' : 'var(--color-border)'}`,
+                  background: 'var(--color-surface-elevated)',
+                  color: 'var(--color-text-primary)',
+                  fontSize: 'var(--font-size-body)'
+                }}
+              >
+                <option value="">Select a category</option>
+                {CATEGORIES.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+              {errors.category && (
+                <p style={{ color: 'var(--color-red)', fontSize: 'var(--font-size-caption-1)', marginTop: 'var(--space-2)' }}>
+                  {errors.category}
+                </p>
+              )}
+            </div>
+
+            {/* Budget Amount */}
+            <div>
+              <label className="text-callout" style={{ 
+                display: 'block', 
+                marginBottom: 'var(--space-2)',
+                fontWeight: '600'
+              }}>
+                Budget Amount *
+              </label>
+              <div style={{ position: 'relative' }}>
+                <span style={{ 
+                  position: 'absolute', 
+                  left: 'var(--space-3)', 
+                  top: '50%', 
+                  transform: 'translateY(-50%)',
+                  color: 'var(--color-text-secondary)'
+                }}>
+                  $
+                </span>
+                <input
+                  type="number"
+                  value={formData.allocated || ''}
+                  onChange={(e) => {
+                    setFormData({ ...formData, allocated: parseFloat(e.target.value) || 0 })
+                    setErrors({ ...errors, allocated: '' })
+                  }}
+                  className="input"
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                  style={{
+                    width: '100%',
+                    padding: 'var(--space-3) var(--space-3) var(--space-3) var(--space-8)',
+                    borderRadius: 'var(--radius-medium)',
+                    border: `1px solid ${errors.allocated ? 'var(--color-red)' : 'var(--color-border)'}`,
+                    background: 'var(--color-surface-elevated)',
+                    color: 'var(--color-text-primary)',
+                    fontSize: 'var(--font-size-body)'
+                  }}
+                />
+              </div>
+              {suggestedAmount > 0 && !budget && (
+                <p style={{ 
+                  color: 'var(--color-text-secondary)', 
+                  fontSize: 'var(--font-size-caption-1)', 
+                  marginTop: 'var(--space-2)' 
+                }}>
+                  💡 Suggested: ${suggestedAmount.toFixed(2)} based on your spending
+                </p>
+              )}
+              {errors.allocated && (
+                <p style={{ color: 'var(--color-red)', fontSize: 'var(--font-size-caption-1)', marginTop: 'var(--space-2)' }}>
+                  {errors.allocated}
+                </p>
+              )}
+            </div>
+
+            {/* Period Selection */}
+            <div>
+              <label className="text-callout" style={{ 
+                display: 'block', 
+                marginBottom: 'var(--space-2)',
+                fontWeight: '600'
+              }}>
+                Period
+              </label>
+              <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                {(['weekly', 'monthly', 'yearly'] as const).map(period => (
+                  <button
+                    key={period}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, period })}
+                    className={`btn ${formData.period === period ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ flex: 1, textTransform: 'capitalize' }}
+                  >
+                    {period}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Alert Threshold */}
+            <div>
+              <label className="text-callout" style={{ 
+                display: 'block', 
+                marginBottom: 'var(--space-2)',
+                fontWeight: '600'
+              }}>
+                Alert at {formData.notifications.threshold}% of budget
+              </label>
+              <input
+                type="range"
+                min="50"
+                max="100"
+                step="5"
+                value={formData.notifications.threshold}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  notifications: { ...formData.notifications, threshold: parseInt(e.target.value) }
+                })}
+                style={{ width: '100%' }}
               />
             </div>
-          )}
 
-          {/* Budget Amount */}
-          <div className="form-group">
-            <label htmlFor="allocated">Budget Amount</label>
-            <input
-              id="allocated"
-              type="number"
-              min="0"
-              step="0.01"
-              value={formData.allocated}
-              onChange={(e) => {
-                setFormData(prev => ({ ...prev, allocated: parseFloat(e.target.value) || 0 }))
-                setErrors(prev => ({ ...prev, allocated: '' }))
-              }}
-              className={`form-control ${errors.allocated ? 'error' : ''}`}
-              placeholder="0.00"
-              required
-            />
-            {errors.allocated && (
-              <span className="error-message">{errors.allocated}</span>
-            )}
-          </div>
-
-          {/* Period */}
-          <div className="form-group">
-            <label htmlFor="period">Budget Period</label>
-            <select
-              id="period"
-              value={formData.period}
-              onChange={(e) => setFormData(prev => ({ ...prev, period: e.target.value as any }))}
-              className="form-control"
-            >
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
-              <option value="yearly">Yearly</option>
-            </select>
-          </div>
-
-          {/* Start Date */}
-          <div className="form-group">
-            <label htmlFor="startDate">Start Date</label>
-            <input
-              id="startDate"
-              type="date"
-              value={formData.startDate}
-              onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-              className="form-control"
-            />
+            {/* Rollover Option */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 'var(--space-3)',
+              padding: 'var(--space-4)',
+              background: 'var(--color-surface-elevated)',
+              borderRadius: 'var(--radius-medium)',
+              border: '1px solid var(--color-border)'
+            }}>
+              <input
+                type="checkbox"
+                id="rollover"
+                checked={formData.rollover}
+                onChange={(e) => setFormData({ ...formData, rollover: e.target.checked })}
+                style={{ width: '20px', height: '20px' }}
+              />
+              <label htmlFor="rollover" className="text-body" style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Roll over unused budget to next period
+              </label>
+            </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="modal-actions">
-            <button type="button" onClick={onClose} className="btn btn-secondary">
+          <div style={{ 
+            display: 'flex', 
+            gap: 'var(--space-3)', 
+            marginTop: 'var(--space-8)',
+            justifyContent: 'flex-end'
+          }}>
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn btn-secondary"
+            >
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary">
+            <button
+              type="submit"
+              className="btn btn-primary"
+            >
               {budget ? 'Update Budget' : 'Create Budget'}
             </button>
           </div>

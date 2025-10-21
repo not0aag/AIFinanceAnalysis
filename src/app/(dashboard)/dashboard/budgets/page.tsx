@@ -27,11 +27,8 @@ export default function BudgetsPage() {
         const typedTransactions: Transaction[] = parsed.map((t: any) => ({
           ...t,
           id: t.id?.toString() || Date.now().toString(),
-          userId: t.userId || 'user-1',
-          // Preserve the original type and amount as they are correctly set
-          type: t.type || (t.amount > 0 ? 'income' : 'expense'),
-          // Keep the original amount - sample data already has correct signs
-          amount: t.amount,
+          userId: 'user-1',
+          type: t.amount > 0 ? 'income' : 'expense',
           createdAt: t.createdAt || t.date,
           updatedAt: t.updatedAt || t.date
         }))
@@ -218,7 +215,7 @@ export default function BudgetsPage() {
                 .filter(budget => budget.period === selectedPeriod)
                 .map((budget, index) => (
                   <motion.div
-                    key={budget.id}
+                    key={`${budget.id}-${index}`}
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.9 }}

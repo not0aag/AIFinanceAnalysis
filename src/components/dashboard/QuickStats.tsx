@@ -15,7 +15,7 @@ export default function QuickStats({ metrics, period }: QuickStatsProps) {
       title: 'Net Worth',
       value: metrics.netWorth,
       change: metrics.netWorthChange,
-      icon: '💎',
+      icon: '/icons/categories/Income.jpeg',
       color: 'blue',
       gradient: 'linear-gradient(135deg, var(--color-blue) 0%, var(--color-blue-dark) 100%)',
       description: `Total assets minus liabilities`
@@ -24,7 +24,7 @@ export default function QuickStats({ metrics, period }: QuickStatsProps) {
       title: 'Monthly Income',
       value: metrics.income,
       change: metrics.incomeChange,
-      icon: '💰',
+      icon: '/icons/categories/Income.jpeg',
       color: 'green',
       gradient: 'linear-gradient(135deg, var(--color-green) 0%, var(--color-green-dark) 100%)',
       description: `Average per ${period}`
@@ -33,7 +33,7 @@ export default function QuickStats({ metrics, period }: QuickStatsProps) {
       title: 'Monthly Expenses',
       value: metrics.expenses,
       change: metrics.expenseChange,
-      icon: '💸',
+      icon: '/icons/categories/shopping.jpeg',
       color: 'red',
       gradient: 'linear-gradient(135deg, var(--color-red) 0%, #dc2626 100%)',
       description: `${metrics.topCategory} is highest`
@@ -42,7 +42,7 @@ export default function QuickStats({ metrics, period }: QuickStatsProps) {
       title: 'Savings Rate',
       value: metrics.savingsRate,
       change: metrics.savingsRateChange,
-      icon: '🎯',
+      icon: '/icons/categories/saving.jpeg',
       color: 'purple',
       gradient: 'linear-gradient(135deg, var(--color-purple) 0%, #9333ea 100%)',
       description: `${metrics.savingsRate >= 20 ? 'Excellent!' : 'Can improve'}`,
@@ -67,11 +67,24 @@ export default function QuickStats({ metrics, period }: QuickStatsProps) {
           <div className="stat-header">
             <motion.div 
               className={`stat-icon ${stat.color}`}
-              style={{ background: stat.gradient }}
+              style={{ background: stat.gradient, overflow: 'hidden' }}
               whileHover={{ rotate: 360 }}
               transition={{ duration: 0.5 }}
             >
-              {stat.icon}
+              <img 
+                src={stat.icon}
+                alt={stat.title}
+                width="48"
+                height="48"
+                style={{ 
+                  width: '48px', 
+                  height: '48px',
+                  maxWidth: '48px',
+                  maxHeight: '48px',
+                  objectFit: 'cover',
+                  display: 'block'
+                }}
+              />
             </motion.div>
             <motion.div 
               className={`stat-badge ${stat.change >= 0 ? 'positive' : 'negative'}`}

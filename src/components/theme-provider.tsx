@@ -22,12 +22,10 @@ export function ThemeProvider({
 }: ThemeProviderProps) {
   return (
     <NextThemesProvider
-      attribute="class"
+      attribute={attribute}
       defaultTheme={defaultTheme}
       enableSystem={enableSystem}
       disableTransitionOnChange={disableTransitionOnChange}
-      storageKey="finance-ai-theme"
-      themes={['light', 'dark', 'system']}
       {...props}
     >
       {children}

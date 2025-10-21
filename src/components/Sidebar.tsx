@@ -19,7 +19,6 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Logo } from '@/components/Logo'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -65,7 +64,12 @@ export default function Sidebar() {
             )}
           >
             <div className="p-6">
-              <Logo size="medium" showText={true} />
+              <h2 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
+                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                  <span className="text-primary-foreground text-sm font-medium">F</span>
+                </div>
+                Finance AI
+              </h2>
             </div>
             
             <nav className="flex-1 px-4 pb-4">

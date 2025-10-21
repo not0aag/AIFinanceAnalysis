@@ -102,7 +102,7 @@ export default function GoalProgress({ goals, onGoalUpdate }: GoalProgressProps)
 
               return (
                 <motion.div
-                  key={goal.id}
+                  key={`${goal.id}-${index}`}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.1 }}

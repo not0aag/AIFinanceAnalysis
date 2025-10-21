@@ -93,7 +93,7 @@ export interface FinancialProfile {
   savingsGoal: number;
   riskTolerance: "conservative" | "moderate" | "aggressive";
   creditScore?: number;
-  financialGoals: FinancialGoal[];
+  financialGoals?: FinancialGoal[];
   preferences: {
     currency: string;
     timezone: string;

@@ -3,6 +3,7 @@
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { ArrowUpRight, ArrowDownLeft } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useRouter } from 'next/navigation'
 
 interface Transaction {
   id: string
@@ -18,6 +19,8 @@ interface RecentTransactionsProps {
 }
 
 export default function RecentTransactions({ transactions }: RecentTransactionsProps) {
+  const router = useRouter()
+
   return (
     <motion.div
       initial={{ y: 20, opacity: 0 }}
@@ -25,16 +28,25 @@ export default function RecentTransactions({ transactions }: RecentTransactionsP
       transition={{ delay: 0.5 }}
       className="bg-card border border-border rounded-lg p-6"
     >
-      <h3 className="text-lg font-semibold mb-6">Recent Transactions</h3>
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-lg font-semibold">Recent Transactions</h3>
+        <button
+          onClick={() => router.push('/dashboard/transactions')}
+          className="text-sm text-primary hover:text-primary/80 transition-colors"
+        >
+          View All →
+        </button>
+      </div>
       
       <div className="space-y-4">
         {transactions.map((transaction, index) => (
           <motion.div
-            key={transaction.id}
+            key={`${transaction.id}-${index}`}
             initial={{ x: -20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             transition={{ delay: index * 0.1 }}
-            className="flex items-center justify-between p-3 rounded-lg hover:bg-secondary transition-colors"
+            onClick={() => router.push('/dashboard/transactions')}
+            className="flex items-center justify-between p-3 rounded-lg hover:bg-secondary transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-lg ${
