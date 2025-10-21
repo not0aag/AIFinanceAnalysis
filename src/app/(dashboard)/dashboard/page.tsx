@@ -110,20 +110,28 @@ export default function DashboardPage() {
             animate={{ scale: 1 }}
             transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
           >
-            <div className="hero-icon">
-              <motion.span
-                animate={{ 
-                  rotate: [0, -10, 10, -10, 0],
-                  scale: [1, 1.1, 1]
+            <div style={{
+              width: '100px',
+              height: '100px',
+              background: 'linear-gradient(135deg, var(--color-blue) 0%, var(--color-blue-dark) 100%)',
+              borderRadius: 'var(--radius-large)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto var(--space-8) auto',
+              boxShadow: 'var(--shadow-large)',
+              padding: '14px'
+            }}>
+              <img 
+                src="/icons/categories/main-avatar.jpeg"
+                alt="Finance AI"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  borderRadius: 'var(--radius-medium)'
                 }}
-                transition={{ 
-                  duration: 2,
-                  repeat: Infinity,
-                  repeatDelay: 3
-                }}
-              >
-                $
-              </motion.span>
+              />
             </div>
             
             <h1 className="text-large-title" style={{ 
@@ -151,19 +159,19 @@ export default function DashboardPage() {
           <div className="grid grid-auto" style={{ marginBottom: 'var(--space-16)' }}>
             {[
               {
-                icon: '📊',
+                icon: '/icons/categories/power.jpeg',
                 title: 'Smart Analytics',
                 description: 'AI-driven insights that adapt to your spending patterns and financial goals.',
                 gradient: 'linear-gradient(135deg, var(--color-green) 0%, var(--color-green-dark) 100%)'
               },
               {
-                icon: '🤖',
+                icon: '/icons/categories/ai-think.jpeg',
                 title: 'Predictive AI',
                 description: 'Forecast future expenses and get alerts before you overspend.',
                 gradient: 'linear-gradient(135deg, var(--color-purple) 0%, #8e44ad 100%)'
               },
               {
-                icon: '🎯',
+                icon: '/icons/categories/saving.jpeg',
                 title: 'Goal Automation',
                 description: 'Set it and forget it - we\'ll help you reach your financial goals automatically.',
                 gradient: 'linear-gradient(135deg, var(--color-orange) 0%, #e6890a 100%)'
@@ -191,14 +199,23 @@ export default function DashboardPage() {
                       alignItems: 'center',
                       justifyContent: 'center',
                       margin: '0 auto var(--space-6) auto',
-                      fontSize: 'var(--font-size-title-2)',
-                      color: 'white',
-                      boxShadow: 'var(--shadow-medium)'
+                      boxShadow: 'var(--shadow-medium)',
+                      padding: '10px',
+                      overflow: 'hidden'
                     }}
                     whileHover={{ rotate: 360 }}
                     transition={{ duration: 0.5 }}
                   >
-                    {feature.icon}
+                    <img 
+                      src={feature.icon}
+                      alt={feature.title}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        borderRadius: 'var(--radius-medium)'
+                      }}
+                    />
                   </motion.div>
                   <h3 className="text-title-3" style={{ marginBottom: 'var(--space-3)' }}>
                     {feature.title}
