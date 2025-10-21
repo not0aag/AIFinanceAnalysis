@@ -1,14 +1,22 @@
 import OpenAI from "openai";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Create OpenAI client lazily to avoid build-time initialization
+let openaiClient: OpenAI | null = null;
+
+function getOpenAIClient() {
+  if (!openaiClient) {
+    openaiClient = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY || 'dummy-key-for-build',
+    });
+  }
+  return openaiClient;
+}
 
 export async function categorizeTransaction(
   description: string
 ): Promise<string> {
   try {
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAIClient().chat.completions.create({
       model: "gpt-4",
       messages: [
         {
@@ -37,7 +45,7 @@ export async function generateInsight(
   userProfile: any
 ): Promise<any> {
   try {
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAIClient().chat.completions.create({
       model: "gpt-4",
       messages: [
         {
@@ -73,7 +81,7 @@ export async function generateAdvancedInsights(
       .filter((t) => t.amount < 0 || t.type === "expense")
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAIClient().chat.completions.create({
       model: "gpt-4",
       messages: [
         {
@@ -123,7 +131,7 @@ export async function detectSpendingAnomalies(
       return [];
     }
 
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAIClient().chat.completions.create({
       model: "gpt-4",
       messages: [
         {
@@ -175,7 +183,7 @@ export async function generateSavingsStrategy(
   goals: any[]
 ): Promise<any> {
   try {
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAIClient().chat.completions.create({
       model: "gpt-4",
       messages: [
         {
